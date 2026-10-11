@@ -341,6 +341,16 @@ def test_day_from_alone_runs_to_today(
     assert [item["date"] for item in out] == ["2026-07-04", "2026-07-05"]
 
 
+def test_day_from_today_alone_reads_today(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(day, "date", Today)
+
+    out = run_json(["day", "list", "--from", "2026-07-05"], FakeClient(get={}), capsys)
+
+    assert [item["date"] for item in out] == ["2026-07-05"]
+
+
 def test_day_range_of_31_days_passes(capsys: pytest.CaptureFixture[str]) -> None:
     client = FakeClient(get={})
 
@@ -409,14 +419,22 @@ LIST_HELP = "Run 'fitatu day list --help'"
             "Give a --to on or after --from.",
         ),
         (
+            ["list", "--from", "2026-07-06"],
+            "--from 2026-07-06 is in the future. Give a --from on or before today.",
+        ),
+        (
             ["list", "--from", "2026-07-01", "--to", "2026-08-01"],
             "The range covers 32 days; the limit is 31. Split it into shorter ranges.",
         ),
     ],
 )
 def test_day_bad_range_exits_2(
-    argv: list[str], error: str, capsys: pytest.CaptureFixture[str]
+    argv: list[str],
+    error: str,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(day, "date", Today)
     client = FakeClient(get={})
 
     with pytest.raises(SystemExit) as exit:
