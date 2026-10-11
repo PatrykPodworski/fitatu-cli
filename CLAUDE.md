@@ -2,6 +2,8 @@
 
 Tracker: GitHub Issues
 
+Synced with python-template at 2ace352.
+
 This repository is public. Never commit real Fitatu data.
 
 - Test fixtures and examples copied from real Fitatu responses must be anonymized
@@ -48,8 +50,10 @@ CI (`.github/workflows/ci.yml`) runs these on every pull request and push to `ma
 - `uv run pytest`
 - `uv run ruff check`
 - `uv run ruff format --check`
+- `uv run typos`
 - `uv run vulture`
 - `uv run deptry src`
+- `uv run zizmor .github`
 - `uv run mutmut run` (score ≥ 80%, see below)
 
 ## Mutation testing
