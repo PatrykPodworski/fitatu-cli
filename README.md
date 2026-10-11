@@ -171,8 +171,8 @@ field the summary does not have. `--raw` prints JSON without `--json`.
 
 ## Output and exit codes
 
-Results are plain text on stdout, or JSON with `--json` or `--raw`, with exit code 0. An error is one line on stderr,
-`fitatu: <What happened.> <What to do.>`:
+Results are plain text on stdout, or JSON with `--json` or `--raw`, with exit code 0.
+An error is one line on stderr, `fitatu: <What happened.> <What to do.>`:
 
 - Exit 1: a Fitatu, login or data error.
 - Exit 2: bad arguments.
