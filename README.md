@@ -28,14 +28,14 @@ uv tool install git+https://github.com/PatrykPodworski/fitatu-cli
 3. Log in:
 
    ```sh
-   fitatu login
+   fitatu auth login
    ```
 
-`fitatu login` saves the session to `~/.fitatu/session.json`, or to the file in
+`fitatu auth login` saves the session to `~/.fitatu/session.json`, or to the file in
 `FITATU_SESSION` when that variable is set. A token lasts 1 hour. Other commands
 refresh it, or log in again, when they need to.
 
-Without a Keychain (on any system other than macOS), run `fitatu login` on a Mac, copy
+Without a Keychain (on any system other than macOS), run `fitatu auth login` on a Mac, copy
 the session file to the other machine, and set `FITATU_SESSION` to its path if it is
 not at `~/.fitatu/session.json`.
 
@@ -45,12 +45,12 @@ A `DATE` is `today`, `yesterday` or `YYYY-MM-DD`.
 
 ## Commands
 
-### `fitatu day [DATE]`
+### `fitatu day view [DATE]`
 
 Prints the foods logged on one day and the day totals. `DATE` defaults to `today`.
 
 ```sh
-fitatu day 2026-10-11
+fitatu day view 2026-10-11
 ```
 
 ```json
@@ -99,14 +99,13 @@ fitatu day 2026-10-11
 A missing nutrient counts as 0. A day with nothing logged has `"foods": []` and every
 total 0.
 
-### `fitatu day --from DATE --to DATE`
+### `fitatu day list --from DATE --to DATE`
 
 Prints a JSON array with one day object per day, oldest first. `--to` defaults to
-`today`. A range covers at most 31 days, counting both ends. Give either a `DATE` or
-`--from`/`--to`, not both.
+`today`. A range covers at most 31 days, counting both ends.
 
 ```sh
-fitatu day --from 2026-10-09 --to 2026-10-10
+fitatu day list --from 2026-10-09 --to 2026-10-10
 ```
 
 ```json
@@ -168,13 +167,13 @@ fitatu day --from 2026-10-09 --to 2026-10-10
 ]
 ```
 
-### `fitatu login`
+### `fitatu auth login`
 
 Logs in as `FITATU_EMAIL` with the Keychain password and prints the path of the saved
 session.
 
 ```sh
-fitatu login
+fitatu auth login
 ```
 
 ```json
@@ -183,7 +182,7 @@ fitatu login
 }
 ```
 
-`fitatu <command> --help` lists every option.
+`fitatu <noun> <verb> --help` lists every option.
 
 ## Units
 
@@ -196,8 +195,8 @@ do not have it, so a daily sodium sum is too low. Use `salt` instead.
 
 ## Raw output
 
-`fitatu day --raw` prints Fitatu's response for the day unchanged. With `--from`, it
-prints an array of those responses. Use it when you need a field the summary does not
+`fitatu day view --raw` prints Fitatu's response for the day unchanged. With
+`fitatu day list --raw`, it prints an array of those responses. Use it when you need a field the summary does not
 have.
 
 ## Output and exit codes
@@ -209,31 +208,32 @@ Results are JSON on stdout, with exit code 0. An error is one line on stderr,
 - Exit 2: bad arguments.
 
 To see the full traceback of an exit 1 error, put `--debug` before the command, for
-example `fitatu --debug day`.
+example `fitatu --debug day view`.
 
 | Exit | Message |
 | --- | --- |
 | 1 | `FITATU_EMAIL is not set. Run 'export FITATU_EMAIL=you@example.com' with your Fitatu account email.` |
 | 1 | `No Keychain password for account <email> (service 'fitatu'). Add it with 'security add-generic-password -s fitatu -a <email> -w'.` |
 | 1 | `Logging in to Fitatu reads the password from the macOS Keychain, which is not available here. Log in on a Mac and copy ~/.fitatu/session.json to this machine, or set FITATU_SESSION to a copied session file.` |
-| 1 | `Logging in to Fitatu reads the password from the macOS Keychain, which is not available here. Copy a session file from a Mac that ran 'fitatu login' and point FITATU_SESSION at it.` |
+| 1 | `Logging in to Fitatu reads the password from the macOS Keychain, which is not available here. Copy a session file from a Mac that ran 'fitatu auth login' and point FITATU_SESSION at it.` |
 | 1 | `Fitatu rejected the login for <email>. Check the Keychain password for service 'fitatu'.` |
-| 1 | `Fitatu did not accept a fresh login. Run 'fitatu login'; if it keeps failing, the API may have changed — report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
+| 1 | `Fitatu did not accept a fresh login. Run 'fitatu auth login'; if it keeps failing, the API may have changed — report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Fitatu is rate-limiting requests from this machine. Wait a few minutes and try again.` |
 | 1 | `Could not reach Fitatu (<reason>). Check your internet connection and try again.` |
 | 1 | `Fitatu sent a response fitatu-cli could not read. Fitatu may have changed its API; rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Unexpected error (<reason>). Rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
-| 2 | `No command given. Run 'fitatu <command>', one of: login, day.` |
+| 2 | `No command given. Run 'fitatu <command>', one of: auth, day.` |
+| 2 | `No command given. Run 'fitatu <noun> <command>', one of: <verbs>.` |
 | 2 | `Unknown command '<name>'. Did you mean '<command>'?` |
-| 2 | `Unknown command '<name>'. Run 'fitatu <command>', one of: login, day.` |
-| 2 | `Unknown option '<option>' for 'fitatu <command>'. Did you mean '<option>'? Run 'fitatu <command> --help' for all options.` |
-| 2 | `Unexpected argument '<argument>' for 'fitatu <command>'. Run 'fitatu <command> --help' for all options.` |
-| 2 | `Option '<option>' goes after the command. Run 'fitatu <command> <option>'.` |
-| 2 | `Option '<option>' needs a value. Run 'fitatu day --help'.` |
+| 2 | `Unknown command '<name>'. Run 'fitatu <command>', one of: auth, day.` |
+| 2 | `Unknown command '<name>'. Run 'fitatu <noun> <command>', one of: <verbs>.` |
+| 2 | `Unknown option '<option>' for 'fitatu <noun> <verb>'. Did you mean '<option>'? Run 'fitatu <noun> <verb> --help' for all options.` |
+| 2 | `Unexpected argument '<argument>' for 'fitatu <noun> <verb>'. Run 'fitatu <noun> <verb> --help' for all options.` |
+| 2 | `Option '<option>' goes after the command. Run 'fitatu <noun> <verb> <option>'.` |
+| 2 | `Option '<option>' needs a value. Run 'fitatu day list --help'.` |
 | 2 | `Option '<option>' takes no value. Remove '=<value>'.` |
 | 2 | `Invalid date '<value>'. Use today, yesterday or YYYY-MM-DD.` |
-| 2 | `Give either a date or --from/--to, not both. Run 'fitatu day --help'.` |
-| 2 | `Missing --from for 'fitatu day'. Run 'fitatu day --help'.` |
+| 2 | `Missing --from for 'fitatu day list'. Run 'fitatu day list --help'.` |
 | 2 | `--to <date> is before --from <date>. Give a --to on or after --from.` |
 | 2 | `The range covers <n> days; the limit is 31. Split it into shorter ranges.` |
 
@@ -269,7 +269,7 @@ ln -s "$PWD/skills/fitatu" ~/.claude/skills/fitatu
 ```
 
 The skill tells an agent which commands answer which questions, how to read the output
-and errors, and that it must never run `fitatu login` or read the session file.
+and errors, and that it must never run `fitatu auth login` or read the session file.
 
 ## Development
 

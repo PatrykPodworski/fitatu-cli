@@ -25,6 +25,9 @@ Read commands are grouped by domain, one module per group. A command that change
 data on the service gets its own module, named `<group>_<verb>.py`, and imports
 shared read helpers from its group. Time and date conversion lives in `dates.py`.
 
+Commands follow gh's `<noun> <verb>` shape; `test_commands_are_nouns_with_standard_verbs`
+in `tests/test_cli.py` holds the allowed verbs.
+
 ## Errors
 
 An expected failure raises `FitatuCliError(problem, action)`; `main` prints it as one

@@ -150,7 +150,7 @@ Setup = Callable[[pytest.MonkeyPatch, Path], None]
             {},
             "Logging in to Fitatu reads the password from the macOS Keychain, which "
             "is not available here. Copy a session file from a Mac that ran "
-            "'fitatu login' and point FITATU_SESSION at it.",
+            "'fitatu auth login' and point FITATU_SESSION at it.",
             id="not-macos",
         ),
         pytest.param(
@@ -163,7 +163,7 @@ Setup = Callable[[pytest.MonkeyPatch, Path], None]
         pytest.param(
             nothing,
             {LOGIN: [LOGGED_IN, LOGGED_IN], DAY: [http_error(401), http_error(401)]},
-            "Fitatu did not accept a fresh login. Run 'fitatu login'; if it keeps "
+            "Fitatu did not accept a fresh login. Run 'fitatu auth login'; if it keeps "
             f"failing, the API may have changed — report it at {ISSUES}.",
             id="401-after-relogin",
         ),
@@ -247,7 +247,8 @@ def test_error_prints_one_line(
     serve(monkeypatch, routes)
 
     code = main(
-        ["day", "2026-07-05"], connect=lambda: client.FitatuClient(now=lambda: NOW)
+        ["day", "view", "2026-07-05"],
+        connect=lambda: client.FitatuClient(now=lambda: NOW),
     )
 
     out = capsys.readouterr()
@@ -262,7 +263,7 @@ def test_debug_raises_mapped_error_from_its_cause(
 
     with pytest.raises(FitatuCliError) as error:
         main(
-            ["--debug", "day", "2026-07-05"],
+            ["--debug", "day", "view", "2026-07-05"],
             connect=lambda: client.FitatuClient(now=lambda: NOW),
         )
 

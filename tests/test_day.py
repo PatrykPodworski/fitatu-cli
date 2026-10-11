@@ -191,7 +191,7 @@ def test_day_prints_foods_in_response_meal_order(
         }
     )
 
-    out = run_json(["day", "2026-07-05"], client, capsys)
+    out = run_json(["day", "view", "2026-07-05"], client, capsys)
 
     assert client.calls == [
         ("get", ("/api/diet-and-activity-plan/{uid}/day/2026-07-05",), {})
@@ -225,7 +225,7 @@ def test_day_defaults_to_today_and_prints_an_empty_day(
 ) -> None:
     client = FakeClient(get={"dietPlan": {"breakfast": {"items": []}}})
 
-    out = run_json(["day"], client, capsys)
+    out = run_json(["day", "view"], client, capsys)
 
     assert client.calls[0][1] == (
         f"/api/diet-and-activity-plan/{{uid}}/day/{date.today():%Y-%m-%d}",
@@ -243,13 +243,13 @@ def test_day_raw_prints_the_response_unchanged(
     response = {"dietPlan": {"lunch": {"items": [{"energy": 1.23456}]}}, "water": 2}
 
     assert run_json(
-        ["day", "2026-07-05", "--raw"], FakeClient(get=response), capsys
+        ["day", "view", "2026-07-05", "--raw"], FakeClient(get=response), capsys
     ) == (response)
 
 
 def test_day_invalid_date_exits_2(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exit:
-        main(["day", "5.07"], connect=FakeClient)
+        main(["day", "view", "5.07"], connect=FakeClient)
 
     assert exit.value.code == 2
     assert capsys.readouterr().err == (
@@ -257,19 +257,37 @@ def test_day_invalid_date_exits_2(capsys: pytest.CaptureFixture[str]) -> None:
     )
 
 
-def test_help_lists_day_and_its_options(capsys: pytest.CaptureFixture[str]) -> None:
+def test_help_lists_day_and_its_verbs(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
         main(["--help"])
-    assert "day one day's foods and totals" in " ".join(capsys.readouterr().out.split())
+    assert "day foods and totals by day" in " ".join(capsys.readouterr().out.split())
 
     with pytest.raises(SystemExit) as exit:
         main(["day", "--help"])
 
     assert exit.value.code == 0
     help_text = " ".join(capsys.readouterr().out.split())
-    assert (
-        "usage: fitatu day [-h] [--from DATE] [--to DATE] [--raw] [date]" in help_text
-    )
+    assert "usage: fitatu day [-h] {view,list}" in help_text
+    assert "view one day's foods and totals" in help_text
+    assert "list each day's foods and totals in a range" in help_text
+
+
+@pytest.mark.parametrize(
+    ("verb", "usage"),
+    [
+        ("view", "usage: fitatu day view [-h] [--raw] [date]"),
+        ("list", "usage: fitatu day list [-h] [--from DATE] [--to DATE] [--raw]"),
+    ],
+)
+def test_day_verb_help_shows_its_options(
+    verb: str, usage: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit) as exit:
+        main(["day", verb, "--help"])
+
+    assert exit.value.code == 0
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert usage in help_text
     assert "--raw print the full service response" in help_text
 
 
@@ -292,7 +310,10 @@ def test_day_range_logs_in_once_and_reads_each_day_in_order(
         logins.append(client)
         return client
 
-    assert main(["day", "--from", "2026-06-30", "--to", "2026-07-02"], connect) == 0
+    assert (
+        main(["day", "list", "--from", "2026-06-30", "--to", "2026-07-02"], connect)
+        == 0
+    )
     out = json.loads(capsys.readouterr().out)
 
     assert len(logins) == 1
@@ -311,7 +332,7 @@ def test_day_from_alone_runs_to_today(
     monkeypatch.setattr(day, "date", Today)
     client = FakeClient(get={})
 
-    out = run_json(["day", "--from", "2026-07-04"], client, capsys)
+    out = run_json(["day", "list", "--from", "2026-07-04"], client, capsys)
 
     assert [call[1][0] for call in client.calls] == [
         f"{PATH}2026-07-04",
@@ -324,7 +345,7 @@ def test_day_range_of_31_days_passes(capsys: pytest.CaptureFixture[str]) -> None
     client = FakeClient(get={})
 
     out = run_json(
-        ["day", "--from", "2026-07-01", "--to", "2026-07-31"], client, capsys
+        ["day", "list", "--from", "2026-07-01", "--to", "2026-07-31"], client, capsys
     )
 
     assert len(out) == 31
@@ -335,7 +356,7 @@ def test_day_range_of_one_day_prints_an_array(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     out = run_json(
-        ["day", "--from", "2026-07-05", "--to", "2026-07-05"],
+        ["day", "list", "--from", "2026-07-05", "--to", "2026-07-05"],
         FakeClient(get={}),
         capsys,
     )
@@ -349,7 +370,7 @@ def test_day_range_raw_prints_the_responses_unchanged(
     response = {"dietPlan": {"lunch": {"items": [{"energy": 1.23456}]}}}
 
     out = run_json(
-        ["day", "--from", "2026-07-04", "--to", "2026-07-05", "--raw"],
+        ["day", "list", "--from", "2026-07-04", "--to", "2026-07-05", "--raw"],
         FakeClient(get=response),
         capsys,
     )
@@ -357,28 +378,38 @@ def test_day_range_raw_prints_the_responses_unchanged(
     assert out == [response, response]
 
 
+LIST_HELP = "Run 'fitatu day list --help'"
+
+
 @pytest.mark.parametrize(
     ("argv", "error"),
     [
         (
-            ["--to", "2026-07-05"],
-            "Missing --from for 'fitatu day'. Run 'fitatu day --help'.",
+            ["list", "--to", "2026-07-05"],
+            f"Missing --from for 'fitatu day list'. {LIST_HELP}.",
         ),
         (
-            ["2026-07-05", "--from", "2026-07-01"],
-            "Give either a date or --from/--to, not both. Run 'fitatu day --help'.",
+            ["list", "2026-07-05", "--from", "2026-07-01"],
+            "Unexpected argument '2026-07-05' for 'fitatu day list'. "
+            f"{LIST_HELP} for all options.",
         ),
         (
-            ["2026-07-05", "--to", "2026-07-06"],
-            "Give either a date or --from/--to, not both. Run 'fitatu day --help'.",
+            ["view", "2026-07-05", "--to", "2026-07-06"],
+            "Unknown option '--to' for 'fitatu day view'. "
+            "Run 'fitatu day view --help' for all options.",
         ),
         (
-            ["--from", "2026-07-05", "--to", "2026-07-04"],
+            ["--raw", "view", "2026-07-05"],
+            "Option '--raw' goes after the command. "
+            "Run 'fitatu day view --raw 2026-07-05'.",
+        ),
+        (
+            ["list", "--from", "2026-07-05", "--to", "2026-07-04"],
             "--to 2026-07-04 is before --from 2026-07-05. "
             "Give a --to on or after --from.",
         ),
         (
-            ["--from", "2026-07-01", "--to", "2026-08-01"],
+            ["list", "--from", "2026-07-01", "--to", "2026-08-01"],
             "The range covers 32 days; the limit is 31. Split it into shorter ranges.",
         ),
     ],

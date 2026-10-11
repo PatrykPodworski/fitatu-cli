@@ -101,7 +101,7 @@ def password(address: str) -> str:
         raise FitatuCliError(
             "Logging in to Fitatu reads the password from the macOS Keychain, which "
             "is not available here.",
-            "Copy a session file from a Mac that ran 'fitatu login' and point "
+            "Copy a session file from a Mac that ran 'fitatu auth login' and point "
             "FITATU_SESSION at it."
             if "FITATU_SESSION" in os.environ
             else "Log in on a Mac and copy ~/.fitatu/session.json to this machine, "

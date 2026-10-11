@@ -10,27 +10,26 @@ description: Use when the user asks about their Fitatu food diary — what they 
 ## Commands
 
 ```sh
-fitatu day [DATE]                    # one day's foods and totals; DATE: today | yesterday | YYYY-MM-DD, default today
-fitatu day --from DATE [--to DATE]   # each day in the range, oldest first; --to defaults to today
-fitatu login                         # the user runs this, never an agent (see Rules)
+fitatu day view [DATE]                    # one day's foods and totals; DATE: today | yesterday | YYYY-MM-DD, default today
+fitatu day list --from DATE [--to DATE]   # each day in the range, oldest first; --to defaults to today
+fitatu auth login                         # the user runs this, never an agent (see Rules)
 ```
 
-`fitatu day` prints `{"date", "foods", "totals"}`. Each food has `meal`, `name`,
+`fitatu day view` prints `{"date", "foods", "totals"}`. Each food has `meal`, `name`,
 `quantity`, `measure` and its nutrients: `energy` in kcal; `carbohydrate`, `protein`,
 `fat`, `fiber`, `sugars` and `salt` in grams. `totals` sums the nutrients over the day.
 A missing nutrient is 0. A day with nothing logged has `foods: []`, every total 0, and
 exits 0. `--raw` prints the service's day plan instead.
 
-With `--from`, `fitatu day` prints a JSON array of those day objects, one per day,
-oldest first, or of the raw day plans with `--raw`. A range covers at most 31 days,
-counting both ends; split a longer period into several calls. Give either a DATE or
-`--from`/`--to`, not both.
+`fitatu day list` prints a JSON array of those day objects, one per day, oldest
+first, or of the raw day plans with `--raw`. A range covers at most 31 days, counting
+both ends; split a longer period into several calls.
 
-`fitatu <command> --help` lists every flag.
+`fitatu <noun> <verb> --help` lists every flag.
 
 ## Rules
 
-- Never run `fitatu login` and never read `~/.fitatu` or the file in `FITATU_SESSION`:
+- Never run `fitatu auth login` and never read `~/.fitatu` or the file in `FITATU_SESSION`:
   they hold the user's login. Every command logs in on its own when it needs to.
 - Start with the summary. Add `--raw` only when the field you need is missing from it:
   raw output is the full service response, many times larger.
@@ -49,7 +48,7 @@ Results are JSON on stdout. An error is one stderr line,
   bug in the CLI or a change in Fitatu's API. Show the full line to the user and stop.
 - Any other exit 1, such as a rate limit or no network: tell the user the second
   sentence and wait for them.
-- Exit 2: bad arguments. The message names the fix (`Did you mean 'login'?`);
+- Exit 2: bad arguments. The message names the fix (`Did you mean 'view'?`);
   correct the call and retry once.
 
 ## Privacy
