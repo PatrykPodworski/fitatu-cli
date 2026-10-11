@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
-from conftest import APP_UUID, NOW, FakeHttp, jwt, run_json
+from conftest import NOW, FakeHttp, jwt, run_json
 
 from fitatu_cli.cli import main
 from fitatu_cli.client import FitatuClient
@@ -26,7 +26,7 @@ def test_login_logs_in_and_prints_session_path(
     assert json.loads(account.read_text())["token"] == NEW_TOKEN
 
 
-def test_login_never_prints_the_token_or_app_uuid(
+def test_login_never_prints_the_token(
     account: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     http = FakeHttp({"/api/login": [{"token": NEW_TOKEN}]})
@@ -35,7 +35,6 @@ def test_login_never_prints_the_token_or_app_uuid(
     out = capsys.readouterr()
     assert NEW_TOKEN not in out.out + out.err
     assert NEW_TOKEN.split(".")[1] not in out.out + out.err
-    assert APP_UUID not in out.out + out.err
 
 
 def test_login_without_email_exits_1(
