@@ -1,4 +1,5 @@
-"""`fitatu` entry point. A subcommand gets the parsed args and a `connect`
+"""`fitatu` entry point. A command is a verb in a noun group. It sets `run` and
+`parser`, its own parser, as defaults; `run` gets the parsed args and a `connect`
 function, returns JSON-serializable data, and `main` prints it to stdout."""
 
 import argparse
@@ -76,10 +77,17 @@ class CliParser(argparse.ArgumentParser):
     def run_command(self) -> str:
         return f"Run '{self.prog} <command>', one of: {', '.join(self.listed)}."
 
+    def name_commands(self) -> None:
+        """Shows only the listed commands in usage and errors, here and in every
+        command group below."""
+        if self.subparsers:
+            self.subparsers.metavar = f"{{{','.join(self.listed)}}}"
+        for command in self.commands.values():
+            cast(CliParser, command).name_commands()
+
     def reject(self, argv: list[str], args: argparse.Namespace, arg: str) -> NoReturn:
         """Reports an argument the parser of the parsed command did not consume."""
-        command = args.command
-        subparser = self.commands[command]
+        subparser = args.parser
         prog = subparser.prog
         help = f"Run '{prog} --help' for all options."
         if not arg.startswith("-"):
@@ -92,7 +100,7 @@ class CliParser(argparse.ArgumentParser):
         if arg.partition("=")[0] in options:
             rest = list(argv)
             rest.remove(arg)
-            rest.insert(rest.index(command) + 1, arg)
+            rest.insert(rest.index(prog.split()[-1]) + 1, arg)
             self.fail(
                 f"Option '{arg}' goes after the command. Run '{NAME} {' '.join(rest)}'."
             )
@@ -127,7 +135,7 @@ def build_parser() -> CliParser:
     )
     login.register(subparsers)
     day.register(subparsers)
-    subparsers.metavar = f"{{{','.join(parser.listed)}}}"
+    parser.name_commands()
     return parser
 
 

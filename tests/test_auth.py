@@ -174,7 +174,7 @@ def test_401_after_fresh_login_fails(account: Path) -> None:
         client(http).get(DAY)
 
     assert str(error.value) == (
-        "Fitatu did not accept a fresh login. Run 'fitatu login'; if it keeps "
+        "Fitatu did not accept a fresh login. Run 'fitatu auth login'; if it keeps "
         "failing, the API may have changed — report it at "
         "https://github.com/PatrykPodworski/fitatu-cli/issues."
     )
@@ -267,7 +267,7 @@ def test_no_keychain_with_fitatu_session(
     assert str(error.value) == (
         "Logging in to Fitatu reads the password from the macOS Keychain, which "
         "is not available here. Copy a session file from a Mac that ran "
-        "'fitatu login' and point FITATU_SESSION at it."
+        "'fitatu auth login' and point FITATU_SESSION at it."
     )
 
 

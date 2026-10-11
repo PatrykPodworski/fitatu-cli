@@ -64,11 +64,9 @@ def summary(client: Client, when: date, raw: bool) -> Json:
 
 def days(args: argparse.Namespace) -> list[date]:
     fail = args.parser.fail
-    help = f"Run '{args.parser.prog} --help'."
-    if args.date:
-        fail(f"Give either a date or --from/--to, not both. {help}")
+    prog = args.parser.prog
     if not args.start:
-        fail(f"Missing --from for '{args.parser.prog}'. {help}")
+        fail(f"Missing --from for '{prog}'. Run '{prog} --help'.")
     start = args.start
     end = args.end or date.today()
     if end < start:
@@ -82,20 +80,29 @@ def days(args: argparse.Namespace) -> list[date]:
     return [start + timedelta(days=n) for n in range(count)]
 
 
-def day(args: argparse.Namespace, connect: Connect) -> Json | list[Json]:
-    if not (args.start or args.end):
-        return summary(connect(), args.date or date.today(), args.raw)
+def view_day(args: argparse.Namespace, connect: Connect) -> Json:
+    return summary(connect(), args.date, args.raw)
+
+
+def list_days(args: argparse.Namespace, connect: Connect) -> list[Json]:
     dates = days(args)
     client = connect()
     return [summary(client, when, args.raw) for when in dates]
 
 
 def register(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
-    day_parser = subparsers.add_parser("day", help="one day's foods and totals")
-    add_date_argument(day_parser)
-    add_range_arguments(day_parser, default=None)
-    day_parser.add_argument(
-        "--raw", action="store_true", help="print the full service response"
+    verbs = subparsers.add_parser("day", help="foods and totals by day").add_subparsers(
+        required=True
     )
-    # A date of None tells an omitted date apart from one given with --from/--to.
-    day_parser.set_defaults(run=day, parser=day_parser, date=None)
+    view = verbs.add_parser("view", help="one day's foods and totals")
+    add_date_argument(view)
+    view.set_defaults(run=view_day, parser=view)
+    list_parser = verbs.add_parser(
+        "list", help="each day's foods and totals in a range"
+    )
+    add_range_arguments(list_parser, default=None)
+    list_parser.set_defaults(run=list_days, parser=list_parser)
+    for parser in (view, list_parser):
+        parser.add_argument(
+            "--raw", action="store_true", help="print the full service response"
+        )

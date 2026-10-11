@@ -10,8 +10,9 @@ def login(_args: argparse.Namespace, connect: Connect) -> dict[str, str]:
 
 
 def register(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
-    login_parser = subparsers.add_parser(
+    auth_parser = subparsers.add_parser("auth", help="log in to Fitatu")
+    login_parser = auth_parser.add_subparsers(required=True).add_parser(
         "login",
         help="log in as FITATU_EMAIL with the Keychain password, save the session",
     )
-    login_parser.set_defaults(run=login)
+    login_parser.set_defaults(run=login, parser=login_parser)

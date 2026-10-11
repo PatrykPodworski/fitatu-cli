@@ -75,7 +75,7 @@ class FitatuClient:
                 raise
         raise FitatuCliError(
             "Fitatu did not accept a fresh login.",
-            "Run 'fitatu login'; if it keeps failing, the API may have changed — "
+            "Run 'fitatu auth login'; if it keeps failing, the API may have changed — "
             f"report it at {ISSUES}.",
         )
 
