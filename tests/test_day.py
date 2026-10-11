@@ -1,23 +1,9 @@
 from datetime import date
 
 import pytest
+from conftest import FakeClient
 
 from fitatu_cli.day import Json, day_foods, read_plan
-
-
-class FakeClient:
-    """Answers `get(path)` with `routes[path]` and records the path."""
-
-    def __init__(self, routes: dict[str, Json]) -> None:
-        self.routes = routes
-        self.paths: list[str] = []
-
-    def login(self) -> None:
-        raise AssertionError("unexpected login")
-
-    def get(self, path: str) -> Json:
-        self.paths.append(path)
-        return self.routes[path]
 
 
 def plan(*items: Json) -> Json:
@@ -25,10 +11,12 @@ def plan(*items: Json) -> Json:
 
 
 def test_read_plan_gets_the_day_of_the_session_user() -> None:
-    client = FakeClient({"/api/diet-and-activity-plan/{uid}/day/2026-07-05": {"x": 1}})
+    client = FakeClient(get={"x": 1})
 
     assert read_plan(client, date(2026, 7, 5)) == {"x": 1}
-    assert client.paths == ["/api/diet-and-activity-plan/{uid}/day/2026-07-05"]
+    assert client.calls == [
+        ("get", ("/api/diet-and-activity-plan/{uid}/day/2026-07-05",), {})
+    ]
 
 
 def test_day_foods_sums_every_meal() -> None:
@@ -88,11 +76,11 @@ def test_day_foods_lists_items_with_nutrients_and_totals() -> None:
                 "mealName": "Snack",
                 "items": [
                     {
-                        "name": "Gel",
-                        "measureQuantity": 3,
-                        "measureName": "package",
-                        "energy": 471,
-                        "carbohydrate": 118.84,
+                        "name": "Bar",
+                        "measureQuantity": 2,
+                        "measureName": "piece",
+                        "energy": 300,
+                        "carbohydrate": 50.44,
                         "protein": 1,
                         "fat": 2,
                         "fiber": 3,
@@ -120,11 +108,11 @@ def test_day_foods_lists_items_with_nutrients_and_totals() -> None:
         "foods": [
             {
                 "meal": "Snack",
-                "name": "Gel",
-                "quantity": 3,
-                "measure": "package",
-                "energy": 471,
-                "carbohydrate": 118.8,
+                "name": "Bar",
+                "quantity": 2,
+                "measure": "piece",
+                "energy": 300,
+                "carbohydrate": 50.4,
                 "protein": 1,
                 "fat": 2,
                 "fiber": 3,
@@ -146,8 +134,8 @@ def test_day_foods_lists_items_with_nutrients_and_totals() -> None:
             },
         ],
         "totals": {
-            "energy": 671,
-            "carbohydrate": 138.8,
+            "energy": 500,
+            "carbohydrate": 70.4,
             "protein": 1,
             "fat": 2,
             "fiber": 3,
