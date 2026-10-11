@@ -1,8 +1,9 @@
 from datetime import date
 
 import pytest
-from conftest import FakeClient
+from conftest import FakeClient, run_json
 
+from fitatu_cli.cli import main
 from fitatu_cli.day import Json, day_foods, read_plan
 
 
@@ -151,3 +152,117 @@ def test_totals_sum_unrounded_values() -> None:
 
     assert [food["salt"] for food in out["foods"]] == [0.0, 0.0, 0.0]
     assert out["totals"]["salt"] == 0.1
+
+
+ZERO_TOTALS = dict.fromkeys(
+    ("energy", "carbohydrate", "protein", "fat", "fiber", "sugars", "salt"), 0
+)
+
+
+def test_day_prints_foods_in_response_meal_order(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client = FakeClient(
+        get={
+            "dietPlan": {
+                "dinner": {
+                    "mealName": "Dinner",
+                    "items": [
+                        {
+                            "name": "Stew",
+                            "foodType": "RECIPE",
+                            "recipeId": 77,
+                            "ingredientsServing": 4,
+                            "measureQuantity": 2,
+                            "measureName": "portion",
+                            "energy": 640.25,
+                            "protein": None,
+                        }
+                    ],
+                },
+                "breakfast": {
+                    "mealName": "Breakfast",
+                    "items": [{"name": "Oats", "measureQuantity": 50, "energy": 190}],
+                },
+            }
+        }
+    )
+
+    out = run_json(["day", "2026-07-05"], client, capsys)
+
+    assert client.calls == [
+        ("get", ("/api/diet-and-activity-plan/{uid}/day/2026-07-05",), {})
+    ]
+    assert out == {
+        "date": "2026-07-05",
+        "foods": [
+            {
+                "meal": "Dinner",
+                "name": "Stew",
+                "quantity": 2,
+                "measure": "portion",
+                **ZERO_TOTALS,
+                "energy": 640.2,
+            },
+            {
+                "meal": "Breakfast",
+                "name": "Oats",
+                "quantity": 50,
+                "measure": None,
+                **ZERO_TOTALS,
+                "energy": 190,
+            },
+        ],
+        "totals": {**ZERO_TOTALS, "energy": 830.2},
+    }
+
+
+def test_day_defaults_to_today_and_prints_an_empty_day(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client = FakeClient(get={"dietPlan": {"breakfast": {"items": []}}})
+
+    out = run_json(["day"], client, capsys)
+
+    assert client.calls[0][1] == (
+        f"/api/diet-and-activity-plan/{{uid}}/day/{date.today():%Y-%m-%d}",
+    )
+    assert out == {
+        "date": f"{date.today():%Y-%m-%d}",
+        "foods": [],
+        "totals": ZERO_TOTALS,
+    }
+
+
+def test_day_raw_prints_the_response_unchanged(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    response = {"dietPlan": {"lunch": {"items": [{"energy": 1.23456}]}}, "water": 2}
+
+    assert run_json(
+        ["day", "2026-07-05", "--raw"], FakeClient(get=response), capsys
+    ) == (response)
+
+
+def test_day_invalid_date_exits_2(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exit:
+        main(["day", "5.07"], connect=FakeClient)
+
+    assert exit.value.code == 2
+    assert capsys.readouterr().err == (
+        "fitatu: Invalid date '5.07'. Use today, yesterday or YYYY-MM-DD.\n"
+    )
+
+
+def test_help_lists_day_and_its_options(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["--help"])
+    assert "day one day's foods and totals" in " ".join(capsys.readouterr().out.split())
+
+    with pytest.raises(SystemExit) as exit:
+        main(["day", "--help"])
+
+    assert exit.value.code == 0
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "usage: fitatu day [-h] [--raw] [date]" in help_text
+    assert "--raw print the full service response" in help_text

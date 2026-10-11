@@ -9,7 +9,7 @@ import sys
 from collections.abc import Mapping
 from typing import Any, NoReturn, cast
 
-from fitatu_cli import client, login
+from fitatu_cli import client, day, login
 from fitatu_cli.client import Connect
 from fitatu_cli.errors import ISSUES, FitatuCliError
 
@@ -134,6 +134,7 @@ def build_parser() -> CliParser:
         parser.add_subparsers(dest="command", required=True),
     )
     login.register(subparsers)
+    day.register(subparsers)
     subparsers.metavar = f"{{{','.join(parser.listed)}}}"
     return parser
 
