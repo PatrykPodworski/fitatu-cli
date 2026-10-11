@@ -3,7 +3,7 @@ import json
 import subprocess
 import urllib.request
 from collections.abc import Callable
-from http.client import RemoteDisconnected
+from http.client import IncompleteRead, RemoteDisconnected
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -204,6 +204,13 @@ Setup = Callable[[pytest.MonkeyPatch, Path], None]
             "Could not reach Fitatu (RemoteDisconnected: Remote end closed). "
             f"{OFFLINE}",
             id="connection-dropped",
+        ),
+        pytest.param(
+            nothing,
+            {LOGIN: [LOGGED_IN], DAY: [IncompleteRead(b"{", 10)]},
+            "Could not reach Fitatu (IncompleteRead: IncompleteRead(1 bytes read, 10 "
+            f"more expected)). {OFFLINE}",
+            id="body-cut-off",
         ),
         pytest.param(
             nothing,

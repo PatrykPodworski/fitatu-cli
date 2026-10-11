@@ -2,6 +2,7 @@ import json
 import time
 import urllib.request
 from collections.abc import Callable
+from http.client import IncompleteRead
 from typing import Any, Protocol, cast
 from urllib.error import HTTPError
 
@@ -29,8 +30,9 @@ def http(url: str, headers: dict[str, str], body: Json | None) -> Json:
                 "Wait a few minutes and try again.",
             ) from error
         raise
-    # URLError, timeouts and dropped connections are all OSErrors.
-    except OSError as error:
+    # URLError, timeouts and dropped connections are all OSErrors; IncompleteRead
+    # is a body cut off mid-read.
+    except (OSError, IncompleteRead) as error:
         raise FitatuCliError(
             f"Could not reach Fitatu ({reason(error)}).",
             "Check your internet connection and try again.",

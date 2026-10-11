@@ -146,8 +146,10 @@ def main(argv: list[str] | None = None, connect: Connect = client.connect) -> in
         message = (
             str(error)
             if isinstance(error, FitatuCliError)
-            else f"Unexpected error ({reason(error)}). "
-            f"Rerun with --debug and report it at {ISSUES}."
+            else (
+                f"Unexpected error ({reason(error)}). "
+                f"Rerun with --debug and report it at {ISSUES}."
+            )
         )
     else:
         if not getattr(args, "raw", False):
