@@ -10,7 +10,8 @@ description: Use when the user asks about their Fitatu food diary. Replace this 
 ## Commands
 
 ```sh
-fitatu day [DATE]    # one day's foods and totals; DATE: today | yesterday | YYYY-MM-DD, default today
+fitatu day [DATE]                    # one day's foods and totals; DATE: today | yesterday | YYYY-MM-DD, default today
+fitatu day --from DATE [--to DATE]   # each day in the range, oldest first; --to defaults to today
 fitatu login         # the user runs this, never an agent (see Rules)
 ```
 
@@ -19,6 +20,11 @@ fitatu login         # the user runs this, never an agent (see Rules)
 `fat`, `fiber`, `sugars` and `salt` in grams. `totals` sums the nutrients over the day.
 A missing nutrient is 0. A day with nothing logged has `foods: []`, every total 0, and
 exits 0. `--raw` prints the service's day plan instead.
+
+With `--from`, `fitatu day` prints a JSON array of those day objects, one per day,
+oldest first, or of the raw day plans with `--raw`. A range covers at most 31 days,
+counting both ends; split a longer period into several calls. Give either a DATE or
+`--from`/`--to`, not both.
 
 `fitatu <command> --help` lists every flag.
 

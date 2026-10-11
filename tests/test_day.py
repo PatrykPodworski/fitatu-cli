@@ -1,8 +1,11 @@
+import json
 from datetime import date
+from typing import Any
 
 import pytest
 from conftest import FakeClient, run_json
 
+from fitatu_cli import day
 from fitatu_cli.cli import main
 from fitatu_cli.day import Json, day_foods, read_plan
 
@@ -264,5 +267,130 @@ def test_help_lists_day_and_its_options(capsys: pytest.CaptureFixture[str]) -> N
 
     assert exit.value.code == 0
     help_text = " ".join(capsys.readouterr().out.split())
-    assert "usage: fitatu day [-h] [--raw] [date]" in help_text
+    assert (
+        "usage: fitatu day [-h] [--from DATE] [--to DATE] [--raw] [date]" in help_text
+    )
     assert "--raw print the full service response" in help_text
+
+
+PATH = "/api/diet-and-activity-plan/{uid}/day/"
+
+
+class Today(date):
+    @classmethod
+    def today(cls) -> "Today":
+        return cls(2026, 7, 5)
+
+
+def test_day_range_logs_in_once_and_reads_each_day_in_order(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client = FakeClient(get={"dietPlan": {"lunch": {"items": [{"energy": 100}]}}})
+    logins: list[Any] = []
+
+    def connect() -> FakeClient:
+        logins.append(client)
+        return client
+
+    assert main(["day", "--from", "2026-06-30", "--to", "2026-07-02"], connect) == 0
+    out = json.loads(capsys.readouterr().out)
+
+    assert len(logins) == 1
+    assert [call[1][0] for call in client.calls] == [
+        f"{PATH}2026-06-30",
+        f"{PATH}2026-07-01",
+        f"{PATH}2026-07-02",
+    ]
+    assert [item["date"] for item in out] == ["2026-06-30", "2026-07-01", "2026-07-02"]
+    assert out[0]["totals"]["energy"] == 100
+
+
+def test_day_from_alone_runs_to_today(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(day, "date", Today)
+    client = FakeClient(get={})
+
+    out = run_json(["day", "--from", "2026-07-04"], client, capsys)
+
+    assert [call[1][0] for call in client.calls] == [
+        f"{PATH}2026-07-04",
+        f"{PATH}2026-07-05",
+    ]
+    assert [item["date"] for item in out] == ["2026-07-04", "2026-07-05"]
+
+
+def test_day_range_of_31_days_passes(capsys: pytest.CaptureFixture[str]) -> None:
+    client = FakeClient(get={})
+
+    out = run_json(
+        ["day", "--from", "2026-07-01", "--to", "2026-07-31"], client, capsys
+    )
+
+    assert len(out) == 31
+    assert client.calls[-1][1][0] == f"{PATH}2026-07-31"
+
+
+def test_day_range_of_one_day_prints_an_array(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    out = run_json(
+        ["day", "--from", "2026-07-05", "--to", "2026-07-05"],
+        FakeClient(get={}),
+        capsys,
+    )
+
+    assert [item["date"] for item in out] == ["2026-07-05"]
+
+
+def test_day_range_raw_prints_the_responses_unchanged(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    response = {"dietPlan": {"lunch": {"items": [{"energy": 1.23456}]}}}
+
+    out = run_json(
+        ["day", "--from", "2026-07-04", "--to", "2026-07-05", "--raw"],
+        FakeClient(get=response),
+        capsys,
+    )
+
+    assert out == [response, response]
+
+
+@pytest.mark.parametrize(
+    ("argv", "error"),
+    [
+        (
+            ["--to", "2026-07-05"],
+            "Missing --from for 'fitatu day'. Run 'fitatu day --help'.",
+        ),
+        (
+            ["2026-07-05", "--from", "2026-07-01"],
+            "Give either a date or --from/--to, not both. Run 'fitatu day --help'.",
+        ),
+        (
+            ["2026-07-05", "--to", "2026-07-06"],
+            "Give either a date or --from/--to, not both. Run 'fitatu day --help'.",
+        ),
+        (
+            ["--from", "2026-07-05", "--to", "2026-07-04"],
+            "--to 2026-07-04 is before --from 2026-07-05. "
+            "Give a --to on or after --from.",
+        ),
+        (
+            ["--from", "2026-07-01", "--to", "2026-08-01"],
+            "The range covers 32 days; the limit is 31. Split it into shorter ranges.",
+        ),
+    ],
+)
+def test_day_bad_range_exits_2(
+    argv: list[str], error: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    client = FakeClient(get={})
+
+    with pytest.raises(SystemExit) as exit:
+        main(["day", *argv], connect=lambda: client)
+
+    assert exit.value.code == 2
+    assert capsys.readouterr().err == f"fitatu: {error}\n"
+    assert client.calls == []
