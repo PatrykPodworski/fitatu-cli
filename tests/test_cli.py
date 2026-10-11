@@ -43,7 +43,7 @@ def test_help_exits_0(capsys: pytest.CaptureFixture[str]) -> None:
     assert exit.value.code == 0
     help_text = " ".join(capsys.readouterr().out.split())
     assert "usage: fitatu" in help_text
-    assert "{login}" in help_text
+    assert "{login,day}" in help_text
     assert (
         "login log in as FITATU_EMAIL with the Keychain password, save the session"
         in help_text
@@ -69,11 +69,12 @@ STATUS_HELP = "Run 'fitatu status --help' for all options."
 @pytest.mark.parametrize(
     ("argv", "message"),
     [
-        ([], "No command given. Run 'fitatu <command>', one of: login, status."),
+        ([], "No command given. Run 'fitatu <command>', one of: login, status, day."),
         (["statu"], "Unknown command 'statu'. Did you mean 'status'?"),
         (
             ["xyz"],
-            "Unknown command 'xyz'. Run 'fitatu <command>', one of: login, status.",
+            "Unknown command 'xyz'. "
+            "Run 'fitatu <command>', one of: login, status, day.",
         ),
         (
             ["status", "--rwa"],

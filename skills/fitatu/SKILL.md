@@ -10,8 +10,15 @@ description: Use when the user asks about their Fitatu food diary. Replace this 
 ## Commands
 
 ```sh
+fitatu day [DATE]    # one day's foods and totals; DATE: today | yesterday | YYYY-MM-DD, default today
 fitatu login         # the user runs this, never an agent (see Rules)
 ```
+
+`fitatu day` prints `{"date", "foods", "totals"}`. Each food has `meal`, `name`,
+`quantity`, `measure` and its nutrients: `energy` in kcal; `carbohydrate`, `protein`,
+`fat`, `fiber`, `sugars` and `salt` in grams. `totals` sums the nutrients over the day.
+A missing nutrient is 0. A day with nothing logged has `foods: []`, every total 0, and
+exits 0. `--raw` prints the service's day plan instead.
 
 `fitatu <command> --help` lists every flag.
 
