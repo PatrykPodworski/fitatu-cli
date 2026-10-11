@@ -11,7 +11,7 @@ from typing import Any, NoReturn, cast
 
 from fitatu_cli import client, day, login
 from fitatu_cli.client import Connect
-from fitatu_cli.errors import ISSUES, FitatuCliError
+from fitatu_cli.errors import ISSUES, FitatuCliError, reason
 
 NAME = "fitatu"
 REQUIRED = "the following arguments are required: "
@@ -102,14 +102,6 @@ class CliParser(argparse.ArgumentParser):
         self.fail(f"{problem} {help}")
 
 
-def reason(error: BaseException) -> str:
-    """`<type>: <message>` for an error line, without secrets and on one line."""
-    text = f"{type(error).__name__}: {str(error).partition(chr(10))[0]}"
-    text = re.sub(r"\?\S+", "?…", text)
-    text = re.sub(r"Bearer \S+", "Bearer …", text)
-    return text[:100]
-
-
 def round_floats(value: Any) -> Any:
     if isinstance(value, float):
         return round(value, 2)
@@ -125,7 +117,7 @@ def build_parser() -> CliParser:
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="show the full traceback for unexpected errors",
+        help="show the full traceback on errors",
     )
     # Subparsers are CliParsers too; the cast matches the invariant type the
     # `register` functions take.
@@ -148,13 +140,13 @@ def main(argv: list[str] | None = None, connect: Connect = client.connect) -> in
         parser.reject(argv, args, extras[0])
     try:
         result = args.run(args, connect)
-    except FitatuCliError as error:
-        message = str(error)
     except Exception as error:
         if args.debug:
             raise
         message = (
-            f"Unexpected error ({reason(error)}). "
+            str(error)
+            if isinstance(error, FitatuCliError)
+            else f"Unexpected error ({reason(error)}). "
             f"Rerun with --debug and report it at {ISSUES}."
         )
     else:

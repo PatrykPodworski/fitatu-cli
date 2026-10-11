@@ -6,6 +6,7 @@ from typing import Any
 
 from fitatu_cli.client import Client, Connect
 from fitatu_cli.dates import add_date_argument
+from fitatu_cli.errors import unreadable
 
 Json = dict[str, Any]
 
@@ -13,7 +14,10 @@ NUTRIENTS = ("energy", "carbohydrate", "protein", "fat", "fiber", "sugars", "sal
 
 
 def read_plan(client: Client, day: date) -> Json:
-    return client.get(f"/api/diet-and-activity-plan/{{uid}}/day/{day:%Y-%m-%d}")
+    plan = client.get(f"/api/diet-and-activity-plan/{{uid}}/day/{day:%Y-%m-%d}")
+    if not isinstance(plan.get("dietPlan"), dict | None):
+        raise unreadable()
+    return plan
 
 
 def _items(plan: Json) -> list[tuple[str, Json]]:

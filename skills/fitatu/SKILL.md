@@ -36,8 +36,10 @@ exits 0. `--raw` prints the service's day plan instead.
 Results are JSON on stdout. An error is one stderr line,
 `fitatu: <What happened.> <What to do.>`.
 
-- `Unexpected error` (exit 1): a bug in the CLI. Show the full line to the user and stop.
-- Any other exit 1: tell the user the second sentence and wait for them.
+- `Unexpected error` or `Fitatu sent a response fitatu-cli could not read` (exit 1): a
+  bug in the CLI or a change in Fitatu's API. Show the full line to the user and stop.
+- Any other exit 1, such as a rate limit or no network: tell the user the second
+  sentence and wait for them.
 - Exit 2: bad arguments. The message names the fix (`Did you mean 'login'?`);
   correct the call and retry once.
 
