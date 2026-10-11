@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, cast
 from urllib.error import HTTPError
 
-from fitatu_cli.errors import FitatuCliError
+from fitatu_cli.errors import FitatuCliError, unreadable
 
 Json = dict[str, Any]
 Http = Callable[[str, dict[str, str], Json | None], Json]
@@ -127,7 +127,9 @@ def password(address: str) -> str:
 
 def store(response: Json, device: str) -> Json:
     """Saves the session from a login or refresh response."""
-    token = response["token"]
+    token = response.get("token")
+    if not token:
+        raise unreadable()
     session = {"token": token, "uid": str(claims(token)["id"]), "app_uuid": device}
     if response.get("refresh_token"):
         session["refresh_token"] = response["refresh_token"]

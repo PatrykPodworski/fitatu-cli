@@ -48,7 +48,7 @@ def test_help_exits_0(capsys: pytest.CaptureFixture[str]) -> None:
         "login log in as FITATU_EMAIL with the Keychain password, save the session"
         in help_text
     )
-    assert "--debug show the full traceback for unexpected errors" in help_text
+    assert "--debug show the full traceback on errors" in help_text
 
 
 @pytest.mark.usefixtures("read_command")
@@ -248,13 +248,13 @@ def test_debug_reraises_unexpected_error() -> None:
 
 
 @pytest.mark.usefixtures("read_command")
-def test_debug_keeps_expected_error_message(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
+def test_debug_reraises_expected_error() -> None:
     client: Any = RaisingClient(FitatuCliError("Not ready.", "Wait."))
 
-    assert main(["--debug", "status"], connect=lambda: client) == 1
-    assert capsys.readouterr().err == "fitatu: Not ready. Wait.\n"
+    with pytest.raises(FitatuCliError) as error:
+        main(["--debug", "status"], connect=lambda: client)
+
+    assert str(error.value) == "Not ready. Wait."
 
 
 @pytest.mark.usefixtures("read_command")

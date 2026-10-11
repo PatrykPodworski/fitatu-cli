@@ -2,11 +2,12 @@ import json
 import time
 import urllib.request
 from collections.abc import Callable
+from http.client import IncompleteRead
 from typing import Any, Protocol, cast
 from urllib.error import HTTPError
 
 from fitatu_cli import auth
-from fitatu_cli.errors import ISSUES, FitatuCliError
+from fitatu_cli.errors import ISSUES, FitatuCliError, reason, unreadable
 
 Json = dict[str, Any]
 
@@ -19,8 +20,26 @@ def http(url: str, headers: dict[str, str], body: Json | None) -> Json:
         headers = headers | {"Content-Type": "application/json"}
     # The URL is always API_BASE plus a path from this package.
     request = urllib.request.Request(url, data=data, headers=headers)  # noqa: S310
-    with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310
-        return cast(Json, json.load(response))
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310
+            return cast(Json, json.load(response))
+    except HTTPError as error:
+        if error.code == 429:
+            raise FitatuCliError(
+                "Fitatu is rate-limiting requests from this machine.",
+                "Wait a few minutes and try again.",
+            ) from error
+        raise
+    # URLError, timeouts and dropped connections are all OSErrors; IncompleteRead
+    # is a body cut off mid-read.
+    except (OSError, IncompleteRead) as error:
+        raise FitatuCliError(
+            f"Could not reach Fitatu ({reason(error)}).",
+            "Check your internet connection and try again.",
+        ) from error
+    # JSONDecodeError and UnicodeDecodeError.
+    except ValueError as error:
+        raise unreadable() from error
 
 
 class Client(Protocol):
