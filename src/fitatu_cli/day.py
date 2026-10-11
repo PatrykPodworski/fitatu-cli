@@ -69,6 +69,8 @@ def days(args: argparse.Namespace) -> list[date]:
         fail(f"Missing --from for '{prog}'. Run '{prog} --help'.")
     start = args.start
     end = args.end or date.today()
+    if not args.end and start > end:
+        fail(f"--from {start} is in the future. Give a --from on or before today.")
     if end < start:
         fail(f"--to {end} is before --from {start}. Give a --to on or after --from.")
     count = (end - start).days + 1
