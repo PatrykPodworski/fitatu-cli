@@ -204,6 +204,7 @@ example `fitatu --debug day view`.
 | 2 | `Option '<option>' takes no value. Remove '=<value>'.` |
 | 2 | `Invalid date '<value>'. Use today, yesterday or YYYY-MM-DD.` |
 | 2 | `Missing --from for 'fitatu day list'. Run 'fitatu day list --help'.` |
+| 2 | `--from <date> is in the future. Give a --from on or before today.` |
 | 2 | `--to <date> is before --from <date>. Give a --to on or after --from.` |
 | 2 | `The range covers <n> days; the limit is 31. Split it into shorter ranges.` |
 
