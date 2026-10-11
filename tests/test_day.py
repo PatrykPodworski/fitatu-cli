@@ -353,7 +353,9 @@ def test_day_from_today_alone_reads_today(
 ) -> None:
     monkeypatch.setattr(day, "date", Today)
 
-    out = run_json(["day", "list", "--from", "2026-07-05"], FakeClient(get={}), capsys)
+    out = run_json(
+        ["day", "list", "--from", "2026-07-05", "--json"], FakeClient(get={}), capsys
+    )
 
     assert [item["date"] for item in out] == ["2026-07-05"]
 
