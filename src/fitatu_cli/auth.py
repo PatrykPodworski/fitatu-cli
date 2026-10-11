@@ -36,7 +36,8 @@ HEADERS = {
     ),
 }
 # Seconds before `exp` at which a token counts as expired, so a request never
-# starts with a token about to run out.
+# starts with a token about to run out. Tokens live 3600 s (exp - iat, measured
+# 2026-10-11).
 MARGIN = 60
 
 

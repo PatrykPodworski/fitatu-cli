@@ -31,8 +31,8 @@ def save(path: Path, **session: str) -> None:
     path.write_text(json.dumps({"uid": "101", "app_uuid": SAVED_UUID, **session}))
 
 
-def logged_in(token: str = NEW_TOKEN) -> dict[str, str]:
-    return {"token": token, "refresh_token": "fake-refresh"}
+def logged_in(refresh_token: str = "fake-refresh") -> dict[str, str]:
+    return {"token": NEW_TOKEN, "refresh_token": refresh_token}
 
 
 def test_first_get_logs_in_and_saves_session(account: Path) -> None:
@@ -91,7 +91,7 @@ def test_valid_token_is_reused_without_login(account: Path, ttl: int) -> None:
 @pytest.mark.parametrize("ttl", [60, 0, -3600])
 def test_expiring_token_is_refreshed(account: Path, ttl: int) -> None:
     save(account, token=jwt(NOW + ttl), refresh_token="fake-refresh")
-    http = FakeHttp({REFRESH: [logged_in()], DAY_101: [PLAN]})
+    http = FakeHttp({REFRESH: [logged_in("new-refresh")], DAY_101: [PLAN]})
 
     assert client(http).get(DAY) == PLAN
 
@@ -102,7 +102,7 @@ def test_expiring_token_is_refreshed(account: Path, ttl: int) -> None:
     assert http.calls[1][1]["Authorization"] == f"Bearer {NEW_TOKEN}"
     assert json.loads(account.read_text()) == {
         "token": NEW_TOKEN,
-        "refresh_token": "fake-refresh",
+        "refresh_token": "new-refresh",
         "uid": "101",
         "app_uuid": SAVED_UUID,
     }
