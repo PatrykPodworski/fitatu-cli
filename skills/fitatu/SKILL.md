@@ -1,11 +1,11 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary. Replace this with the questions and data this CLI answers.
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, salt, or per-kg intake (g/kg).
 ---
 
 # fitatu
 
-`fitatu` reads the user's fitatu data and prints JSON. Run it with Bash.
+`fitatu` reads the user's Fitatu data and prints JSON. Run it with Bash.
 
 ## Commands
 
@@ -36,6 +36,8 @@ counting both ends; split a longer period into several calls. Give either a DATE
 - Start with the summary. Add `--raw` only when the field you need is missing from it:
   raw output is the full service response, many times larger.
 - Summary floats are rounded to two decimals. Quote them as printed.
+- A per-kg value, such as carbs in g/kg, needs the user's body weight. Get it with
+  `garmin weight` when the garmin skill is available; otherwise ask the user.
 
 ## Output and errors
 
