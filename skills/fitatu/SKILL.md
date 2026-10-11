@@ -10,13 +10,15 @@ description: Use when the user asks about their Fitatu food diary. Replace this 
 ## Commands
 
 ```sh
-fitatu status        # service status
+fitatu login         # the user runs this, never an agent (see Rules)
 ```
 
 `fitatu <command> --help` lists every flag.
 
 ## Rules
 
+- Never run `fitatu login` and never read `~/.fitatu` or the file in `FITATU_SESSION`:
+  they hold the user's login. Every command logs in on its own when it needs to.
 - Start with the summary. Add `--raw` only when the field you need is missing from it:
   raw output is the full service response, many times larger.
 - Summary floats are rounded to two decimals. Quote them as printed.
@@ -28,7 +30,7 @@ Results are JSON on stdout. An error is one stderr line,
 
 - `Unexpected error` (exit 1): a bug in the CLI. Show the full line to the user and stop.
 - Any other exit 1: tell the user the second sentence and wait for them.
-- Exit 2: bad arguments. The message names the fix (`Did you mean 'status'?`);
+- Exit 2: bad arguments. The message names the fix (`Did you mean 'login'?`);
   correct the call and retry once.
 
 ## Privacy
