@@ -12,7 +12,7 @@ description: Use when the user asks about their Fitatu food diary. Replace this 
 ```sh
 fitatu day [DATE]                    # one day's foods and totals; DATE: today | yesterday | YYYY-MM-DD, default today
 fitatu day --from DATE [--to DATE]   # each day in the range, oldest first; --to defaults to today
-fitatu login         # the user runs this, never an agent (see Rules)
+fitatu login                         # the user runs this, never an agent (see Rules)
 ```
 
 `fitatu day` prints `{"date", "foods", "totals"}`. Each food has `meal`, `name`,
