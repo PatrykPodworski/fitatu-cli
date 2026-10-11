@@ -114,13 +114,13 @@ Prints a JSON array with one day object per day, oldest first. `--to` defaults t
 `--from`/`--to`, not both.
 
 ```sh
-fitatu day --from 2026-10-10 --to 2026-10-11
+fitatu day --from 2026-10-09 --to 2026-10-10
 ```
 
 ```json
 [
   {
-    "date": "2026-10-10",
+    "date": "2026-10-09",
     "foods": [
       {
         "meal": "Breakfast",
@@ -147,7 +147,7 @@ fitatu day --from 2026-10-10 --to 2026-10-11
     }
   },
   {
-    "date": "2026-10-11",
+    "date": "2026-10-10",
     "foods": [
       {
         "meal": "Lunch",
@@ -235,8 +235,8 @@ example `fitatu --debug day`.
 | 2 | `No command given. Run 'fitatu <command>', one of: login, day.` |
 | 2 | `Unknown command '<name>'. Did you mean '<command>'?` |
 | 2 | `Unknown command '<name>'. Run 'fitatu <command>', one of: login, day.` |
-| 2 | `Unknown option '<option>' for 'fitatu day'. Did you mean '<option>'? Run 'fitatu day --help' for all options.` |
-| 2 | `Unexpected argument '<argument>' for 'fitatu day'. Run 'fitatu day --help' for all options.` |
+| 2 | `Unknown option '<option>' for 'fitatu <command>'. Did you mean '<option>'? Run 'fitatu <command> --help' for all options.` |
+| 2 | `Unexpected argument '<argument>' for 'fitatu <command>'. Run 'fitatu <command> --help' for all options.` |
 | 2 | `Option '<option>' goes after the command. Run 'fitatu <command> <option>'.` |
 | 2 | `Option '<option>' needs a value. Run 'fitatu day --help'.` |
 | 2 | `Option '<option>' takes no value. Remove '=<value>'.` |
