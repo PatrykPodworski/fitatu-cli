@@ -1,6 +1,6 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, salt, or per-kg intake (g/kg).
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg).
 ---
 
 # fitatu
@@ -36,8 +36,10 @@ counting both ends; split a longer period into several calls. Give either a DATE
 - Start with the summary. Add `--raw` only when the field you need is missing from it:
   raw output is the full service response, many times larger.
 - Summary floats are rounded to two decimals. Quote them as printed.
-- A per-kg value, such as carbs in g/kg, needs the user's body weight. Get it with
-  `garmin weight` when the garmin skill is available; otherwise ask the user.
+- A per-kg value, such as carbs in g/kg, needs the user's body weight: the latest
+  weigh-in on or before that day. When the garmin skill is available, get it with
+  `garmin weight` over a range that ends on that day, starting a few weeks earlier
+  and reaching further back until it holds a weigh-in; otherwise ask the user.
 
 ## Output and errors
 
