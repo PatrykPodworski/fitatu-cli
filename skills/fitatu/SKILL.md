@@ -17,8 +17,9 @@ fitatu login         # the user runs this, never an agent (see Rules)
 
 ## Rules
 
-- Never run `fitatu login` and never read `~/.fitatu` or the file in `FITATU_SESSION`:
-  they hold the user's login. Every command logs in on its own when it needs to.
+- Never run `fitatu login`, never read `~/.fitatu` or the file in `FITATU_SESSION`, and
+  never print `FITATU_APP_UUID`: they hold the user's login. Every command logs in on
+  its own when it needs to.
 - Start with the summary. Add `--raw` only when the field you need is missing from it:
   raw output is the full service response, many times larger.
 - Summary floats are rounded to two decimals. Quote them as printed.

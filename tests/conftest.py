@@ -42,6 +42,7 @@ def run_json(argv: list[str], client: Any, capsys: pytest.CaptureFixture[str]) -
 Json = dict[str, Any]
 NOW = 1_800_000_000
 EMAIL = "user@example.com"
+APP_UUID = "00000000-0000-1000-8000-000000000001"
 KEYCHAIN = ["security", "find-generic-password", "-s", "fitatu", "-a", EMAIL, "-w"]
 
 
@@ -83,6 +84,7 @@ def account(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     session = tmp_path / "config" / "fitatu" / "session.json"
     monkeypatch.setenv("FITATU_EMAIL", EMAIL)
     monkeypatch.setenv("FITATU_SESSION", str(session))
+    monkeypatch.setenv("FITATU_APP_UUID", APP_UUID)
 
     def security(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
         assert argv == KEYCHAIN

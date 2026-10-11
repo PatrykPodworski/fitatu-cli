@@ -5,7 +5,6 @@ import base64
 import json
 import os
 import subprocess
-import uuid
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
@@ -87,6 +86,19 @@ def email() -> str:
     return address
 
 
+def app_uuid() -> str:
+    """Fitatu accepts a login only from a device UUID it already knows for the
+    account; a new one gets a 500 or 422."""
+    value = os.environ.get("FITATU_APP_UUID")
+    if not value:
+        raise FitatuCliError(
+            "FITATU_APP_UUID is not set.",
+            "Copy the APP-UUID request header from the Fitatu web app (browser dev "
+            "tools, Network tab) and run 'export FITATU_APP_UUID=<value>'.",
+        )
+    return value
+
+
 def password(address: str) -> str:
     try:
         keychain = subprocess.run(  # noqa: S603
@@ -112,10 +124,10 @@ def password(address: str) -> str:
     return keychain.stdout.rstrip("\n")
 
 
-def store(response: Json, app_uuid: str) -> Json:
+def store(response: Json, device: str) -> Json:
     """Saves the session from a login or refresh response."""
     token = response["token"]
-    session = {"token": token, "uid": str(claims(token)["id"]), "app_uuid": app_uuid}
+    session = {"token": token, "uid": str(claims(token)["id"]), "app_uuid": device}
     if response.get("refresh_token"):
         session["refresh_token"] = response["refresh_token"]
     save(session)
@@ -124,22 +136,22 @@ def store(response: Json, app_uuid: str) -> Json:
 
 def login(http: Http) -> Json:
     address = email()
+    device = app_uuid()
     secret = password(address)
-    app_uuid = load().get("app_uuid") or str(uuid.uuid4())
     try:
         response = http(
             f"{API_BASE}/api/login",
-            HEADERS | {"APP-UUID": app_uuid},
+            HEADERS | {"APP-UUID": device},
             {"_username": address, "_password": secret},
         )
     except HTTPError as error:
-        if error.code in (400, 401):
+        if error.code in (400, 401, 422):
             raise FitatuCliError(
                 f"Fitatu rejected the login for {address}.",
-                "Check the Keychain password for service 'fitatu'.",
+                "Check the Keychain password for service 'fitatu' and FITATU_APP_UUID.",
             ) from None
         raise
-    return store(response, app_uuid)
+    return store(response, device)
 
 
 def session(http: Http, now: Callable[[], float]) -> Json:

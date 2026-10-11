@@ -1,13 +1,12 @@
 import json
 import stat
 import subprocess
-import uuid
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
 
 import pytest
-from conftest import EMAIL, NOW, FakeHttp, http_error, jwt
+from conftest import APP_UUID, EMAIL, NOW, FakeHttp, http_error, jwt
 
 from fitatu_cli import auth
 from fitatu_cli.client import FitatuClient
@@ -20,7 +19,7 @@ DAY = "/api/diet-and-activity-plan/{uid}/day/2026-07-05"
 DAY_101 = "/api/diet-and-activity-plan/101/day/2026-07-05"
 LOGIN = "/api/login"
 REFRESH = "/api/token/refresh"
-APP_UUID = "00000000-0000-4000-8000-000000000001"
+SAVED_UUID = "00000000-0000-1000-8000-000000000002"
 
 
 def client(http: FakeHttp) -> FitatuClient:
@@ -29,7 +28,7 @@ def client(http: FakeHttp) -> FitatuClient:
 
 def save(path: Path, **session: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"uid": "101", "app_uuid": APP_UUID, **session}))
+    path.write_text(json.dumps({"uid": "101", "app_uuid": SAVED_UUID, **session}))
 
 
 def logged_in(token: str = NEW_TOKEN) -> dict[str, str]:
@@ -50,10 +49,11 @@ def test_first_get_logs_in_and_saves_session(account: Path) -> None:
         "token": NEW_TOKEN,
         "refresh_token": "fake-refresh",
         "uid": "101",
-        "app_uuid": session["app_uuid"],
+        "app_uuid": APP_UUID,
     }
-    assert uuid.UUID(session["app_uuid"]).version == 4
-    assert login_headers["APP-UUID"] == session["app_uuid"]
+    assert login_headers["APP-UUID"] == APP_UUID
+    assert "API-Cluster" not in login_headers
+    assert "APP-Timezone" not in login_headers
     assert stat.S_IMODE(account.stat().st_mode) == 0o600
 
 
@@ -67,7 +67,8 @@ def test_data_request_carries_session_headers(account: Path) -> None:
     assert body is None
     assert headers["Authorization"] == f"Bearer {TOKEN}"
     assert headers["API-Cluster"] == "en-gb101"
-    assert headers["APP-UUID"] == APP_UUID
+    assert headers["APP-UUID"] == SAVED_UUID
+    assert "APP-Timezone" not in headers
     assert headers["API-Key"] == "FITATU-MOBILE-APP"
     assert headers["API-Secret"] == auth.API_SECRET
 
@@ -97,13 +98,13 @@ def test_expiring_token_is_refreshed(account: Path, ttl: int) -> None:
     assert http.paths == [REFRESH, DAY_101]
     _, headers, body = http.calls[0]
     assert body == {"refresh_token": "fake-refresh"}
-    assert headers["APP-UUID"] == APP_UUID
+    assert headers["APP-UUID"] == SAVED_UUID
     assert http.calls[1][1]["Authorization"] == f"Bearer {NEW_TOKEN}"
     assert json.loads(account.read_text()) == {
         "token": NEW_TOKEN,
         "refresh_token": "fake-refresh",
         "uid": "101",
-        "app_uuid": APP_UUID,
+        "app_uuid": SAVED_UUID,
     }
 
 
@@ -124,6 +125,7 @@ def test_expired_token_without_refresh_token_logs_in(account: Path) -> None:
 
     assert http.paths == [LOGIN, DAY_101]
     assert http.calls[0][1]["APP-UUID"] == APP_UUID
+    assert http.calls[1][1]["APP-UUID"] == APP_UUID
     assert json.loads(account.read_text())["app_uuid"] == APP_UUID
 
 
@@ -183,7 +185,7 @@ def test_two_runs_share_one_login(account: Path) -> None:
     assert http.paths == [LOGIN, DAY_101, DAY_101]
 
 
-@pytest.mark.parametrize("code", [400, 401])
+@pytest.mark.parametrize("code", [400, 401, 422])
 def test_rejected_login(account: Path, code: int) -> None:
     http = FakeHttp({LOGIN: [http_error(code)]})
 
@@ -192,7 +194,7 @@ def test_rejected_login(account: Path, code: int) -> None:
 
     assert str(error.value) == (
         f"Fitatu rejected the login for {EMAIL}. "
-        "Check the Keychain password for service 'fitatu'."
+        "Check the Keychain password for service 'fitatu' and FITATU_APP_UUID."
     )
 
 
@@ -212,6 +214,19 @@ def test_missing_email(account: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert str(error.value) == (
         "FITATU_EMAIL is not set. Run 'export FITATU_EMAIL=you@example.com' "
         "with your Fitatu account email."
+    )
+
+
+def test_missing_app_uuid(account: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("FITATU_APP_UUID")
+
+    with pytest.raises(FitatuCliError) as error:
+        client(FakeHttp({})).get(DAY)
+
+    assert str(error.value) == (
+        "FITATU_APP_UUID is not set. Copy the APP-UUID request header from the "
+        "Fitatu web app (browser dev tools, Network tab) and run "
+        "'export FITATU_APP_UUID=<value>'."
     )
 
 
