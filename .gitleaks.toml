@@ -1,0 +1,8 @@
+[extend]
+useDefault = true
+
+[allowlist]
+# Fitatu's public web-client API-Secret (src/fitatu_cli/auth.py): the web app
+# ships it to every browser, and AndekQR/fitatu-mcp-unofficial and
+# Jezue/fitatu_library publish it.
+regexes = ['''^PYRXtfs88UDJMuCCrNpLV$''']
