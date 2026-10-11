@@ -1,7 +1,7 @@
 [project]
 name = "fitatu-cli"
 version = "0.1.0"
-description = "Read your Fitatu food diary from the terminal as JSON"
+description = "Read your Fitatu food diary from the terminal"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"

@@ -10,7 +10,16 @@ from fitatu_cli.errors import unreadable
 
 Json = dict[str, Any]
 
-NUTRIENTS = ("energy", "carbohydrate", "protein", "fat", "fiber", "sugars", "salt")
+NUTRIENTS = {
+    "energy": "kcal",
+    "carbohydrate": "g",
+    "protein": "g",
+    "fat": "g",
+    "fiber": "g",
+    "sugars": "g",
+    "salt": "g",
+}
+FOOD_COLUMNS = ("meal", "name", "quantity", "measure")
 
 # ponytail: guards Fitatu's unknown rate limit; raise it once the limit is known.
 MAX_DAYS = 31
@@ -62,6 +71,38 @@ def summary(client: Client, when: date, raw: bool) -> Json:
     return {"date": f"{when:%Y-%m-%d}"} | day_foods(plan)
 
 
+def table(rows: list[list[str]]) -> str:
+    """The rows as lines, each column padded with spaces to its widest cell."""
+    widths = [max(len(cell) for cell in column) for column in zip(*rows, strict=True)]
+    return "\n".join(
+        "  ".join(
+            cell.ljust(width) for cell, width in zip(row, widths, strict=True)
+        ).rstrip()
+        for row in rows
+    )
+
+
+def day_text(day: Json) -> str:
+    """The date line, then a table of the foods with a `total` row."""
+    heading = f"date: {day['date']}"
+    if not day["foods"]:
+        return f"{heading}\nno foods logged"
+    header = [*FOOD_COLUMNS, *(f"{key}_{unit}" for key, unit in NUTRIENTS.items())]
+    foods = [
+        [
+            *("-" if food[key] is None else str(food[key]) for key in FOOD_COLUMNS),
+            *(f"{food[key]:.1f}" for key in NUTRIENTS),
+        ]
+        for food in day["foods"]
+    ]
+    total = ["total", "", "", "", *(f"{day['totals'][key]:.1f}" for key in NUTRIENTS)]
+    return f"{heading}\n{table([header, *foods, total])}"
+
+
+def days_text(days: list[Json]) -> str:
+    return "\n\n".join(day_text(day) for day in days)
+
+
 def days(args: argparse.Namespace) -> list[date]:
     fail = args.parser.fail
     prog = args.parser.prog
@@ -96,12 +137,12 @@ def register(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") 
     )
     view = verbs.add_parser("view", help="one day's foods and totals")
     add_date_argument(view)
-    view.set_defaults(run=view_day, parser=view)
+    view.set_defaults(run=view_day, text=day_text, parser=view)
     list_parser = verbs.add_parser(
         "list", help="each day's foods and totals in a range"
     )
     add_range_arguments(list_parser, default=None)
-    list_parser.set_defaults(run=list_days, parser=list_parser)
+    list_parser.set_defaults(run=list_days, text=days_text, parser=list_parser)
     for parser in (view, list_parser):
         parser.add_argument(
             "--raw", action="store_true", help="print the full service response"

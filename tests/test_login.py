@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
-from conftest import NOW, FakeClient, FakeHttp, jwt, run_json
+from conftest import NOW, FakeClient, FakeHttp, jwt, run_json, run_text
 
 from fitatu_cli.cli import main
 from fitatu_cli.client import FitatuClient
@@ -19,11 +19,21 @@ def test_login_logs_in_and_prints_session_path(
     http = FakeHttp({"/api/login": [{"token": NEW_TOKEN}]})
     client = FitatuClient(http=http, now=lambda: NOW)
 
-    result = run_json(["auth", "login"], client, capsys)
+    result = run_text(["auth", "login"], client, capsys)
 
-    assert result == {"session": str(account)}
+    assert result == f"Saved the session to {account}.\n"
     assert http.paths == ["/api/login"]
     assert json.loads(account.read_text())["token"] == NEW_TOKEN
+
+
+def test_login_json_prints_the_session_path(
+    account: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    http = FakeHttp({"/api/login": [{"token": NEW_TOKEN}]})
+
+    result = run_json(["auth", "login", "--json"], FitatuClient(http=http), capsys)
+
+    assert result == {"session": str(account)}
 
 
 def test_login_never_prints_the_token(
