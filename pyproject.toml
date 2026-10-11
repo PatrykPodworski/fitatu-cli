@@ -50,8 +50,8 @@ fail_under = 90
 [tool.vulture]
 paths = ["src", "tests"]
 min_confidence = 60
-# pytest finds fixtures by name, e.g. through @pytest.mark.usefixtures.
-ignore_decorators = ["@pytest.fixture"]
+# A fixture used only through @pytest.mark.usefixtures.
+ignore_names = ["read_command"]
 
 [tool.mutmut]
 source_paths = ["src/"]
