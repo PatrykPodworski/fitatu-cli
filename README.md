@@ -25,15 +25,7 @@ uv tool install git+https://github.com/PatrykPodworski/fitatu-cli
    security add-generic-password -s fitatu -a you@example.com -w
    ```
 
-3. Set `FITATU_APP_UUID`. Fitatu accepts a login only from a device UUID it already
-   knows for your account. Open the Fitatu web app, open the browser dev tools, and
-   copy the `APP-UUID` request header from any request in the Network tab:
-
-   ```sh
-   export FITATU_APP_UUID=<value>
-   ```
-
-4. Log in:
+3. Log in:
 
    ```sh
    fitatu login
@@ -222,11 +214,10 @@ example `fitatu --debug day`.
 | Exit | Message |
 | --- | --- |
 | 1 | `FITATU_EMAIL is not set. Run 'export FITATU_EMAIL=you@example.com' with your Fitatu account email.` |
-| 1 | `FITATU_APP_UUID is not set. Copy the APP-UUID request header from the Fitatu web app (browser dev tools, Network tab) and run 'export FITATU_APP_UUID=<value>'.` |
 | 1 | `No Keychain password for account <email> (service 'fitatu'). Add it with 'security add-generic-password -s fitatu -a <email> -w'.` |
 | 1 | `Logging in to Fitatu reads the password from the macOS Keychain, which is not available here. Log in on a Mac and copy ~/.fitatu/session.json to this machine, or set FITATU_SESSION to a copied session file.` |
 | 1 | `Logging in to Fitatu reads the password from the macOS Keychain, which is not available here. Copy a session file from a Mac that ran 'fitatu login' and point FITATU_SESSION at it.` |
-| 1 | `Fitatu rejected the login for <email>. Check the Keychain password for service 'fitatu' and FITATU_APP_UUID.` |
+| 1 | `Fitatu rejected the login for <email>. Check the Keychain password for service 'fitatu'.` |
 | 1 | `Fitatu did not accept a fresh login. Run 'fitatu login'; if it keeps failing, the API may have changed — report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Fitatu is rate-limiting requests from this machine. Wait a few minutes and try again.` |
 | 1 | `Could not reach Fitatu (<reason>). Check your internet connection and try again.` |
@@ -257,12 +248,14 @@ Values in angle brackets are filled in from your input or the failure. The
   ([#3](https://github.com/PatrykPodworski/fitatu-cli/issues/3)). It is the web app's
   public client key: the web app sends it to every browser, and two public third-party
   clients already publish it.
+- The `APP-UUID` header value is committed for the same reason
+  ([#34](https://github.com/PatrykPodworski/fitatu-cli/issues/34)). It identifies the
+  web app, not a device: the web app ships it in its public bundle and every browser
+  sends it. Fitatu rejects a login with a UUID it does not know.
 - Day totals are the sums of the nutrients Fitatu sends for each item. Recipe items
   are not rescaled, because Fitatu already sends their nutrients for the portion eaten.
   The totals match the day total in the app
   ([#5](https://github.com/PatrykPodworski/fitatu-cli/issues/5)).
-- A login works only with a device UUID that Fitatu already knows for the account,
-  which is why `FITATU_APP_UUID` is required.
 - If Fitatu changes its API, `fitatu` stops working until the code is updated. To
   update it, capture the web app's requests again in the browser dev tools and compare
   them with the code.

@@ -19,9 +19,13 @@ API_BASE = "https://en-gb.fitatu.com"
 # Fitatu's public web-client key: the web app ships it to every browser, and
 # AndekQR/fitatu-mcp-unofficial and Jezue/fitatu_library publish it.
 API_SECRET = "PYRXtfs88UDJMuCCrNpLV"  # noqa: S105
+# Fitatu's public web-client UUID: the web app ships it in its bundle and every
+# browser sends it. Fitatu rejects a login from a UUID it does not know.
+APP_UUID = "64c2d1b0-c8ad-11e8-8956-0242ac120008"
 HEADERS = {
     "API-Key": "FITATU-MOBILE-APP",
     "API-Secret": API_SECRET,
+    "APP-UUID": APP_UUID,
     "APP-Locale": "en_GB",
     "APP-Location-Country": "UNKNOWN",
     "APP-OS": "FITATU-WEB",
@@ -64,7 +68,6 @@ def save(session: Json) -> None:
 
 def headers(session: Json) -> dict[str, str]:
     return HEADERS | {
-        "APP-UUID": session["app_uuid"],
         "API-Cluster": f"en-gb{session['uid']}",
         "Authorization": f"Bearer {session['token']}",
     }
@@ -85,19 +88,6 @@ def email() -> str:
             "Run 'export FITATU_EMAIL=you@example.com' with your Fitatu account email.",
         )
     return address
-
-
-def app_uuid() -> str:
-    """Fitatu accepts a login only from a device UUID it already knows for the
-    account; a new one gets a 500 or 422."""
-    value = os.environ.get("FITATU_APP_UUID")
-    if not value:
-        raise FitatuCliError(
-            "FITATU_APP_UUID is not set.",
-            "Copy the APP-UUID request header from the Fitatu web app (browser dev "
-            "tools, Network tab) and run 'export FITATU_APP_UUID=<value>'.",
-        )
-    return value
 
 
 def password(address: str) -> str:
@@ -125,12 +115,12 @@ def password(address: str) -> str:
     return keychain.stdout.rstrip("\n")
 
 
-def store(response: Json, device: str) -> Json:
+def store(response: Json) -> Json:
     """Saves the session from a login or refresh response."""
     token = response.get("token")
     if not token:
         raise unreadable()
-    session = {"token": token, "uid": str(claims(token)["id"]), "app_uuid": device}
+    session = {"token": token, "uid": str(claims(token)["id"])}
     if response.get("refresh_token"):
         session["refresh_token"] = response["refresh_token"]
     save(session)
@@ -139,22 +129,21 @@ def store(response: Json, device: str) -> Json:
 
 def login(http: Http) -> Json:
     address = email()
-    device = app_uuid()
     secret = password(address)
     try:
         response = http(
             f"{API_BASE}/api/login",
-            HEADERS | {"APP-UUID": device},
+            HEADERS,
             {"_username": address, "_password": secret},
         )
     except HTTPError as error:
         if error.code in (400, 401, 422):
             raise FitatuCliError(
                 f"Fitatu rejected the login for {address}.",
-                "Check the Keychain password for service 'fitatu' and FITATU_APP_UUID.",
+                "Check the Keychain password for service 'fitatu'.",
             ) from None
         raise
-    return store(response, device)
+    return store(response)
 
 
 def session(http: Http, now: Callable[[], float]) -> Json:
@@ -166,11 +155,11 @@ def session(http: Http, now: Callable[[], float]) -> Json:
         try:
             response = http(
                 f"{API_BASE}/api/token/refresh",
-                HEADERS | {"APP-UUID": current["app_uuid"]},
+                HEADERS,
                 {"refresh_token": current["refresh_token"]},
             )
         except HTTPError:
             pass
         else:
-            return store(response, current["app_uuid"])
+            return store(response)
     return login(http)

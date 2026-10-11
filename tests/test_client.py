@@ -138,14 +138,6 @@ Setup = Callable[[pytest.MonkeyPatch, Path], None]
             id="email-unset",
         ),
         pytest.param(
-            lambda monkeypatch, _: monkeypatch.delenv("FITATU_APP_UUID"),
-            {},
-            "FITATU_APP_UUID is not set. Copy the APP-UUID request header from the "
-            "Fitatu web app (browser dev tools, Network tab) and run "
-            "'export FITATU_APP_UUID=<value>'.",
-            id="app-uuid-unset",
-        ),
-        pytest.param(
             no_keychain,
             {},
             "No Keychain password for account user@example.com (service 'fitatu'). "
@@ -165,7 +157,7 @@ Setup = Callable[[pytest.MonkeyPatch, Path], None]
             nothing,
             {LOGIN: [http_error(422)]},
             "Fitatu rejected the login for user@example.com. Check the Keychain "
-            "password for service 'fitatu' and FITATU_APP_UUID.",
+            "password for service 'fitatu'.",
             id="login-rejected",
         ),
         pytest.param(
