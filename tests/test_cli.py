@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from conftest import FakeClient
 
+from fitatu_cli import login
 from fitatu_cli.cli import CliParser, main, round_floats
 from fitatu_cli.errors import FitatuCliError
 
@@ -13,8 +14,26 @@ class RaisingClient:
     def __init__(self, error: BaseException) -> None:
         self.error = error
 
-    def get_status(self) -> Any:
+    def get(self, path: str) -> Any:
         raise self.error
+
+
+@pytest.fixture
+def read_command(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Adds a `status` command with a `--raw` flag, the shape of a read command."""
+    register_login = login.register
+
+    def register(
+        subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]",
+    ) -> None:
+        register_login(subparsers)
+        status = subparsers.add_parser("status", help="service status")
+        status.add_argument(
+            "--raw", action="store_true", help="print the full service response"
+        )
+        status.set_defaults(run=lambda args, connect: connect().get("/status"))
+
+    monkeypatch.setattr(login, "register", register)
 
 
 def test_help_exits_0(capsys: pytest.CaptureFixture[str]) -> None:
@@ -24,10 +43,15 @@ def test_help_exits_0(capsys: pytest.CaptureFixture[str]) -> None:
     assert exit.value.code == 0
     help_text = " ".join(capsys.readouterr().out.split())
     assert "usage: fitatu" in help_text
-    assert "{status}" in help_text
+    assert "{login}" in help_text
+    assert (
+        "login log in as FITATU_EMAIL with the Keychain password, save the session"
+        in help_text
+    )
     assert "--debug show the full traceback for unexpected errors" in help_text
 
 
+@pytest.mark.usefixtures("read_command")
 def test_subcommand_help_exits_0(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exit:
         main(["status", "--help"])
@@ -41,12 +65,16 @@ def test_subcommand_help_exits_0(capsys: pytest.CaptureFixture[str]) -> None:
 STATUS_HELP = "Run 'fitatu status --help' for all options."
 
 
+@pytest.mark.usefixtures("read_command")
 @pytest.mark.parametrize(
     ("argv", "message"),
     [
-        ([], "No command given. Run 'fitatu <command>', one of: status."),
+        ([], "No command given. Run 'fitatu <command>', one of: login, status."),
         (["statu"], "Unknown command 'statu'. Did you mean 'status'?"),
-        (["xyz"], "Unknown command 'xyz'. Run 'fitatu <command>', one of: status."),
+        (
+            ["xyz"],
+            "Unknown command 'xyz'. Run 'fitatu <command>', one of: login, status.",
+        ),
         (
             ["status", "--rwa"],
             f"Unknown option '--rwa' for 'fitatu status'. Did you mean '--raw'? "
@@ -84,6 +112,7 @@ def test_argument_error_exits_2_with_one_line(
     assert out.out == ""
 
 
+@pytest.mark.usefixtures("read_command")
 def test_reads_sys_argv_by_default(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -158,8 +187,9 @@ def test_parser_without_commands_lists_none() -> None:
     assert parser.listed == []
 
 
+@pytest.mark.usefixtures("read_command")
 def test_prints_json_indented_by_2(capsys: pytest.CaptureFixture[str]) -> None:
-    client = FakeClient(get_status={"x": [1]})
+    client = FakeClient(get={"x": [1]})
 
     assert main(["status", "--raw"], connect=lambda: client) == 0
     assert capsys.readouterr().out == '{\n  "x": [\n    1\n  ]\n}\n'
@@ -171,6 +201,7 @@ UNEXPECTED = (
 )
 
 
+@pytest.mark.usefixtures("read_command")
 @pytest.mark.parametrize(
     ("error", "message"),
     [
@@ -207,6 +238,7 @@ def test_error_exits_1_with_message(
     assert out.out == ""
 
 
+@pytest.mark.usefixtures("read_command")
 def test_debug_reraises_unexpected_error() -> None:
     client: Any = RaisingClient(KeyError("x"))
 
@@ -214,6 +246,7 @@ def test_debug_reraises_unexpected_error() -> None:
         main(["--debug", "status"], connect=lambda: client)
 
 
+@pytest.mark.usefixtures("read_command")
 def test_debug_keeps_expected_error_message(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -223,6 +256,7 @@ def test_debug_keeps_expected_error_message(
     assert capsys.readouterr().err == "fitatu: Not ready. Wait.\n"
 
 
+@pytest.mark.usefixtures("read_command")
 def test_keyboard_interrupt_is_not_caught() -> None:
     client: Any = RaisingClient(KeyboardInterrupt())
 
@@ -230,10 +264,11 @@ def test_keyboard_interrupt_is_not_caught() -> None:
         main(["status"], connect=lambda: client)
 
 
+@pytest.mark.usefixtures("read_command")
 def test_summary_rounds_floats_raw_does_not(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    client = FakeClient(get_status={"state": "ok", "load": 0.800000011920929})
+    client = FakeClient(get={"state": "ok", "load": 0.800000011920929})
 
     assert main(["status"], connect=lambda: client) == 0
     assert '"load": 0.8\n' in capsys.readouterr().out

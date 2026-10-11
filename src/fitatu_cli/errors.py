@@ -3,3 +3,6 @@ class FitatuCliError(Exception):
 
     def __init__(self, problem: str, action: str) -> None:
         super().__init__(f"{problem} {action}")
+
+
+ISSUES = "https://github.com/PatrykPodworski/fitatu-cli/issues"

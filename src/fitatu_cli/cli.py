@@ -9,12 +9,11 @@ import sys
 from collections.abc import Mapping
 from typing import Any, NoReturn, cast
 
-from fitatu_cli import client, status
+from fitatu_cli import client, login
 from fitatu_cli.client import Connect
-from fitatu_cli.errors import FitatuCliError
+from fitatu_cli.errors import ISSUES, FitatuCliError
 
 NAME = "fitatu"
-ISSUES = "https://github.com/PatrykPodworski/fitatu-cli/issues"
 REQUIRED = "the following arguments are required: "
 
 
@@ -134,7 +133,7 @@ def build_parser() -> CliParser:
         "argparse._SubParsersAction[argparse.ArgumentParser]",
         parser.add_subparsers(dest="command", required=True),
     )
-    status.register(subparsers)
+    login.register(subparsers)
     subparsers.metavar = f"{{{','.join(parser.listed)}}}"
     return parser
 
