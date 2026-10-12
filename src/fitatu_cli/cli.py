@@ -20,6 +20,7 @@ from fitatu_cli import (
     recipe,
     recipe_create,
     recipe_delete,
+    recipe_edit,
 )
 from fitatu_cli.client import Connect
 from fitatu_cli.errors import ISSUES, FitatuCliError, reason
@@ -159,9 +160,10 @@ def build_parser() -> CliParser:
     entry = subparsers.add_parser("entry", help="foods in your diary")
     entry_create.register(entry.add_subparsers(required=True))
     food.register(subparsers)
-    recipe_verbs = recipe.register(subparsers)
-    recipe_create.register(recipe_verbs)
-    recipe_delete.register(recipe_verbs)
+    recipes = recipe.register(subparsers)
+    recipe_create.register(recipes)
+    recipe_edit.register(recipes)
+    recipe_delete.register(recipes)
     parser.add_json_option()
     parser.name_commands()
     return parser
