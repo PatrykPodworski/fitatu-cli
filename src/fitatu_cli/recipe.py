@@ -152,7 +152,10 @@ def recipe_text(recipe: Json) -> str:
     return f"{fields}\n\n{ingredients}\n\nper portion\n{nutrients}"
 
 
-def register(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+def register(
+    subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]",
+) -> "argparse._SubParsersAction[argparse.ArgumentParser]":
+    """Registers the read verbs and returns the group, for the write verbs."""
     verbs = subparsers.add_parser("recipe", help="your recipes").add_subparsers(
         required=True
     )
@@ -169,3 +172,4 @@ def register(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") 
     view.add_argument(
         "--raw", action="store_true", help="print the full service response"
     )
+    return verbs
