@@ -80,6 +80,7 @@ def test_day_foods_lists_items_with_nutrients_and_totals() -> None:
                 "mealName": "Snack",
                 "items": [
                     {
+                        "planDayDietItemId": "0e1f-entry",
                         "name": "Bar",
                         "measureQuantity": 2,
                         "measureName": "piece",
@@ -111,6 +112,7 @@ def test_day_foods_lists_items_with_nutrients_and_totals() -> None:
     assert day_foods(day) == {
         "foods": [
             {
+                "id": "0e1f-entry",
                 "meal": "Snack",
                 "name": "Bar",
                 "quantity": 2,
@@ -124,6 +126,7 @@ def test_day_foods_lists_items_with_nutrients_and_totals() -> None:
                 "salt": 0,
             },
             {
+                "id": None,
                 "meal": "dinner",
                 "name": "Stew",
                 "quantity": 1,
@@ -172,6 +175,7 @@ def test_day_prints_foods_in_response_meal_order(
                     "mealName": "Dinner",
                     "items": [
                         {
+                            "planDayDietItemId": "1a2b-entry",
                             "name": "Stew",
                             "foodType": "RECIPE",
                             "recipeId": 77,
@@ -200,6 +204,7 @@ def test_day_prints_foods_in_response_meal_order(
         "date": "2026-07-05",
         "foods": [
             {
+                "id": "1a2b-entry",
                 "meal": "Dinner",
                 "name": "Stew",
                 "quantity": 2,
@@ -208,6 +213,7 @@ def test_day_prints_foods_in_response_meal_order(
                 "energy": 640.2,
             },
             {
+                "id": None,
                 "meal": "Breakfast",
                 "name": "Oats",
                 "quantity": 50,
@@ -462,6 +468,7 @@ def test_day_bad_range_exits_2(
 
 
 OATS = {
+    "planDayDietItemId": "e-1",
     "name": "Oats",
     "measureQuantity": 80,
     "measureName": "g",
@@ -487,10 +494,10 @@ STEW = {
 }
 OATS_AND_STEW = """\
 date: 2026-07-05
-meal       name  quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
-Breakfast  Oats  80        g        300.0        50.4            10.0       5.6    8.0      1.0       0.0
-Lunch      Stew  1.5       portion  540.3        60.0            30.0       18.0   6.0      5.0       1.8
-total                               840.3        110.4           40.0       23.6   14.0     6.0       1.8
+id     meal       name  quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+e-1    Breakfast  Oats  80        g        300.0        50.4            10.0       5.6    8.0      1.0       0.0
+-      Lunch      Stew  1.5       portion  540.3        60.0            30.0       18.0   6.0      5.0       1.8
+total                                      840.3        110.4           40.0       23.6   14.0     6.0       1.8
 """  # noqa: E501
 
 
@@ -517,9 +524,9 @@ def test_day_prints_a_dash_for_a_missing_value_and_0_for_a_missing_nutrient(
     assert run_text(["day", "view", "2026-07-05"], client, capsys) == (
         """\
 date: 2026-07-05
-meal   name  quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
-lunch  Tea   1         -        2.0          0.0             0.0        0.0    0.0      0.0       0.0
-total                           2.0          0.0             0.0        0.0    0.0      0.0       0.0
+id     meal   name  quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+-      lunch  Tea   1         -        2.0          0.0             0.0        0.0    0.0      0.0       0.0
+total                                  2.0          0.0             0.0        0.0    0.0      0.0       0.0
 """  # noqa: E501
     )
 
@@ -544,14 +551,14 @@ def test_day_list_prints_one_block_per_day_with_a_blank_line_between(
     ) == (
         """\
 date: 2026-07-04
-meal   name  quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
-lunch  Tea   1         -        2.0          0.0             0.0        0.0    0.0      0.0       0.0
-total                           2.0          0.0             0.0        0.0    0.0      0.0       0.0
+id     meal   name  quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+-      lunch  Tea   1         -        2.0          0.0             0.0        0.0    0.0      0.0       0.0
+total                                  2.0          0.0             0.0        0.0    0.0      0.0       0.0
 
 date: 2026-07-05
-meal   name  quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
-lunch  Tea   1         -        2.0          0.0             0.0        0.0    0.0      0.0       0.0
-total                           2.0          0.0             0.0        0.0    0.0      0.0       0.0
+id     meal   name  quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+-      lunch  Tea   1         -        2.0          0.0             0.0        0.0    0.0      0.0       0.0
+total                                  2.0          0.0             0.0        0.0    0.0      0.0       0.0
 """  # noqa: E501
     )
 

@@ -19,7 +19,7 @@ NUTRIENTS = {
     "sugars": "g",
     "salt": "g",
 }
-FOOD_COLUMNS = ("meal", "name", "quantity", "measure")
+FOOD_COLUMNS = ("id", "meal", "name", "quantity", "measure")
 
 # ponytail: guards Fitatu's unknown rate limit; raise it once the limit is known.
 MAX_DAYS = 31
@@ -48,6 +48,7 @@ def day_foods(plan: Json) -> Json:
     totals = dict.fromkeys(NUTRIENTS, 0.0)
     for meal, item in _items(plan):
         food = {
+            "id": item.get("planDayDietItemId"),
             "meal": meal,
             "name": item.get("name"),
             "quantity": item.get("measureQuantity"),
@@ -95,7 +96,11 @@ def day_text(day: Json) -> str:
         ]
         for food in day["foods"]
     ]
-    total = ["total", "", "", "", *(f"{day['totals'][key]:.1f}" for key in NUTRIENTS)]
+    total = [
+        "total",
+        *[""] * (len(FOOD_COLUMNS) - 1),
+        *(f"{day['totals'][key]:.1f}" for key in NUTRIENTS),
+    ]
     return f"{heading}\n{table([header, *foods, total])}"
 
 

@@ -14,6 +14,7 @@ from typing import Any, NoReturn, cast
 from fitatu_cli import (
     client,
     day,
+    entry_create,
     food,
     login,
     recipe,
@@ -140,7 +141,9 @@ def round_floats(value: Any) -> Any:
 
 
 def build_parser() -> CliParser:
-    parser = CliParser(prog=NAME, description="Read your Fitatu food diary.")
+    parser = CliParser(
+        prog=NAME, description="Read and fill in your Fitatu food diary."
+    )
     parser.add_argument(
         "--debug",
         action="store_true",
@@ -154,6 +157,8 @@ def build_parser() -> CliParser:
     )
     login.register(subparsers)
     day.register(subparsers)
+    entry = subparsers.add_parser("entry", help="foods in your diary")
+    entry_create.register(entry.add_subparsers(required=True))
     food.register(subparsers)
     recipes = recipe.register(subparsers)
     recipe_create.register(recipes)
