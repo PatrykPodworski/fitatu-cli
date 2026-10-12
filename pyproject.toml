@@ -51,7 +51,7 @@ fail_under = 90
 paths = ["src", "tests"]
 min_confidence = 60
 # Fixtures used only through @pytest.mark.usefixtures or autouse.
-ignore_names = ["read_command", "fixed_clock_and_node"]
+ignore_names = ["read_command", "fixed_clock_and_node", "fixed_clock"]
 
 [tool.mutmut]
 source_paths = ["src/"]

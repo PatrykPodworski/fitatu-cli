@@ -1,7 +1,7 @@
 # fitatu-cli
 
 `fitatu` reads your Fitatu food diary, searches Fitatu's foods, and puts foods into
-your diary. It prints plain text, or JSON with `--json`.
+your diary and removes them. It prints plain text, or JSON with `--json`.
 
 **Unofficial.** This project is not affiliated with Fitatu. It uses the private API of
 the Fitatu web app, so it may break when Fitatu changes that API.
@@ -261,6 +261,24 @@ shows the entry in its `id` column.
 
 With `--json`, it prints `{"id", "date", "meal"}`, where `meal` is the meal's name.
 
+### `fitatu entry delete DATE ENTRY_ID`
+
+Removes one entry from a day. There is no confirmation prompt. `ENTRY_ID` is the
+entry's ID from the `id` column of `fitatu day view`.
+
+```sh
+fitatu entry delete 2026-10-11 3f5e8a10-9a4b-11f1-8000-0b1c2d3e4f50
+```
+
+```text
+deleted entry 3f5e8a10-9a4b-11f1-8000-0b1c2d3e4f50 from Breakfast: Rice
+```
+
+Fitatu applies the change after it answers, so a `fitatu day view` right after can
+still show the entry.
+
+With `--json`, it prints `{"id", "date", "meal", "name"}`.
+
 ### `fitatu auth login`
 
 Logs in as `FITATU_EMAIL` with the Keychain password and prints the path of the saved
@@ -325,6 +343,8 @@ example `fitatu --debug day view`.
 | 1 | `Fitatu has no recipe with ID <id>. Run 'fitatu recipe list' to see your recipes' IDs.` |
 | 1 | `Fitatu did not save the entry (<reason>). Check the food ID, the measure ID and the quantity.` |
 | 1 | `Fitatu's answer did not arrive (<reason>), so the entry may be saved. Wait a minute and check 'fitatu day view <date>' before you run this again.` |
+| 1 | `No entry '<id>' on <date>. Run 'fitatu day view <date>' to see the day's entry IDs.` |
+| 1 | `Fitatu did not delete the entry (<reason>). Rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Unexpected error (<reason>). Rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 2 | `No command given. Run 'fitatu <command>', one of: auth, day, entry, food, recipe.` |
 | 2 | `No command given. Run 'fitatu <noun> <command>', one of: <verbs>.` |
@@ -371,6 +391,9 @@ Values in angle brackets are filled in from your input or the failure. The
   them, and the toilet items, from the day it read. The
   entry ID is a UUID v1, like the web app's, built from random bits instead of your
   machine's network address.
+- `fitatu entry delete` removes an entry as the web app does: it sends the entry again
+  with `deletedAt` set, and with the day's note, tags and toilet items, like `entry
+  create`. The day's read then no longer lists it.
 - Day totals are the sums of the nutrients Fitatu sends for each item. Recipe items
   are not rescaled, because Fitatu already sends their nutrients for the portion eaten.
   The totals match the day total in the app

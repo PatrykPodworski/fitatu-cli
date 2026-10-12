@@ -15,6 +15,7 @@ from fitatu_cli import (
     client,
     day,
     entry_create,
+    entry_delete,
     food,
     login,
     recipe,
@@ -158,7 +159,9 @@ def build_parser() -> CliParser:
     login.register(subparsers)
     day.register(subparsers)
     entry = subparsers.add_parser("entry", help="foods in your diary")
-    entry_create.register(entry.add_subparsers(required=True))
+    entries = entry.add_subparsers(required=True)
+    entry_create.register(entries)
+    entry_delete.register(entries)
     food.register(subparsers)
     recipes = recipe.register(subparsers)
     recipe_create.register(recipes)

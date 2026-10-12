@@ -11,6 +11,8 @@ import pytest
 
 from fitatu_cli.cli import main
 
+Json = dict[str, Any]
+
 
 class FakeClient:
     """Returns `responses[name]` for any `client.name(...)`, or raises it when it is
@@ -34,6 +36,32 @@ class FakeClient:
         return method
 
 
+SAVED = [{"date": "2026-07-05", "revision": 3, "errorMessage": None}]
+
+
+class DiaryClient:
+    """Answers `get(path)` with `gets[path]` and `post` with `saved`, or raises
+    either when it is an exception; records the calls."""
+
+    def __init__(self, gets: dict[str, Any], saved: Any = SAVED) -> None:
+        self.gets = gets
+        self.saved = saved
+        self.calls: list[tuple[Any, ...]] = []
+
+    def get(self, path: str) -> Any:
+        self.calls.append(("get", path))
+        response = self.gets[path]
+        if isinstance(response, BaseException):
+            raise response
+        return response
+
+    def post(self, path: str, body: Json) -> Any:
+        self.calls.append(("post", path, body))
+        if isinstance(self.saved, BaseException):
+            raise self.saved
+        return self.saved
+
+
 def run_json(argv: list[str], client: Any, capsys: pytest.CaptureFixture[str]) -> Any:
     assert main(argv, connect=lambda: client) == 0
     return json.loads(capsys.readouterr().out)
@@ -44,7 +72,6 @@ def run_text(argv: list[str], client: Any, capsys: pytest.CaptureFixture[str]) -
     return capsys.readouterr().out
 
 
-Json = dict[str, Any]
 NOW = 1_800_000_000
 EMAIL = "user@example.com"
 APP_UUID = "64c2d1b0-c8ad-11e8-8956-0242ac120008"

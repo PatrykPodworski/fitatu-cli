@@ -1,11 +1,11 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating, editing or deleting one — wants to find a food in Fitatu, its ID, energy or measure — or asks to log a food or a recipe in their diary.
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating, editing or deleting one — wants to find a food in Fitatu, its ID, energy or measure — or asks to log a food or a recipe in their diary, or to remove one from it.
 ---
 
 # fitatu
 
-`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, creates, edits and deletes recipes, puts foods into the diary, and prints plain text. Run it with Bash.
+`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, creates, edits and deletes recipes, puts foods into the diary and removes them, and prints plain text. Run it with Bash.
 
 ## Commands
 
@@ -21,6 +21,7 @@ fitatu recipe edit ID SPEC                # change a recipe's fields given in SP
 fitatu recipe delete ID                   # delete one of the user's recipes
 fitatu entry create DATE MEAL --product ID --quantity N --measure ID  # put a product into a meal; prints the entry ID
 fitatu entry create DATE MEAL --recipe ID --quantity N  # put N portions of a recipe into a meal
+fitatu entry delete DATE ENTRY_ID         # remove one entry from a day
 fitatu auth login                         # the user runs this, never an agent (see Rules)
 ```
 
@@ -98,6 +99,12 @@ from `recipe list`. `--quantity` counts the measure: a product needs `--measure`
 measure ID `food search` prints; a recipe defaults to measure 39, a portion. Each run
 adds a new entry, so running it twice logs the food twice.
 
+`fitatu entry delete DATE ENTRY_ID` removes one entry from a day and prints
+`deleted entry <id> from <meal>: <name>`. It asks no confirmation. Take ENTRY_ID from
+the `id` column of `fitatu day view DATE`. Fitatu applies diary changes after it
+answers, so a `day view` right after `entry create` or `entry delete` can still show
+the old day; wait and read it again.
+
 `--json` prints the same data as JSON: `{"date", "foods", "totals"}` from
 `day view`, an array of those from `day list`; an array of
 `{"id", "type", "name", "brand", "energy", "measure": {"id", "name", "grams"}}`
@@ -105,7 +112,7 @@ from `food search`; an array of `{"id", "name", "uses"}` from `recipe list`;
 `{"id", "name", "servings", "deleted", "ingredients": [{"name", "quantity", "measure"}],
 "per_portion"}` from `recipe view`, with `quantity` a number or null; `{"id"}` from
 `recipe create` and `recipe edit`; `{"id", "name"}` from `recipe delete`; `{"id", "date",
-"meal"}` from `entry create`. Each `day view` food has its entry ID in `id`. `--raw`
+"meal"}` from `entry create`; `{"id", "date", "meal", "name"}` from `entry delete`. Each `day view` food has its entry ID in `id`. `--raw`
 prints the service's day plan as JSON instead, or an array of day plans from `day
 list`. With `food search` it prints the service's search response; with `recipe
 view`, the service's recipe; with `recipe create` and `recipe edit`, the service's
@@ -127,6 +134,8 @@ ones included, unsorted.
   it only when the user asks, and confirm the recipe's ID and name with them first.
 - `entry create` changes the user's diary. Run it only when the user asks to log a
   food, and confirm the day, meal, food and quantity first when they are unclear.
+- `entry delete` changes the user's diary too. Run it only when the user asks to
+  remove a food, and confirm the entry's day, meal and name with them first.
 - Read the default text. Add `--json` only when a script parses the output.
 - Start with the summary. Add `--raw` only when the field you need is missing from it:
   raw output is the full service response, many times larger.
@@ -160,6 +169,10 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
 - `Fitatu's answer did not arrive ... the entry may be saved` (exit 1): do not run
   `entry create` again yet. Wait a minute, run the `fitatu day view DATE` it names,
   and create the entry only if it is not there.
+- `No entry '<id>' on <date>` (exit 1): the ID is not on that day. Run the
+  `fitatu day view` it names and retry with an ID from its `id` column.
+- `Fitatu did not delete the entry (<reason>)` (exit 1): show the full line to the
+  user and stop.
 - Any other exit 1, such as a rate limit or no network: tell the user the second
   sentence and wait for them.
 - Exit 2: bad arguments, or a `recipe create` or `recipe edit` spec that fails its

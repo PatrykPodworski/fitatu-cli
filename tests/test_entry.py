@@ -5,7 +5,7 @@ from typing import Any
 from uuid import UUID
 
 import pytest
-from conftest import http_error, run_json, run_text
+from conftest import DiaryClient, http_error, run_json, run_text
 
 from fitatu_cli import entry_create
 from fitatu_cli.cli import main
@@ -23,31 +23,7 @@ PLAN = {
     }
 }
 STEW = {"name": "Stew", "serving": 4}
-SAVED = [{"date": "2026-07-05", "revision": 3, "errorMessage": None}]
 PRODUCT = ["--product", "501", "--quantity", "1", "--measure", "7"]
-
-
-class DiaryClient:
-    """Answers `get(path)` with `gets[path]` and `post` with `saved`, or raises
-    either when it is an exception; records the calls."""
-
-    def __init__(self, gets: dict[str, Any], saved: Any = SAVED) -> None:
-        self.gets = gets
-        self.saved = saved
-        self.calls: list[tuple[Any, ...]] = []
-
-    def get(self, path: str) -> Any:
-        self.calls.append(("get", path))
-        response = self.gets[path]
-        if isinstance(response, BaseException):
-            raise response
-        return response
-
-    def post(self, path: str, body: Json) -> Any:
-        self.calls.append(("post", path, body))
-        if isinstance(self.saved, BaseException):
-            raise self.saved
-        return self.saved
 
 
 class Now(datetime):
@@ -509,7 +485,7 @@ CREATE = ["create", "2026-07-05", "lunch"]
             ["create", "5.07", "lunch", "--recipe", "7", "--quantity", "1"],
             "Invalid date '5.07'. Use today, yesterday or YYYY-MM-DD.",
         ),
-        ([], "No command given. Run 'fitatu entry <command>', one of: create."),
+        ([], "No command given. Run 'fitatu entry <command>', one of: create, delete."),
     ],
 )
 def test_entry_argument_error_exits_2_without_a_request(
