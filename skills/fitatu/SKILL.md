@@ -1,11 +1,11 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating a new recipe — or wants to find a food in Fitatu, its ID, energy or measure.
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating or editing a recipe — or wants to find a food in Fitatu, its ID, energy or measure.
 ---
 
 # fitatu
 
-`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, creates recipes, and prints plain text. Run it with Bash.
+`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, creates and edits recipes, and prints plain text. Run it with Bash.
 
 ## Commands
 
@@ -17,6 +17,7 @@ fitatu food search PHRASE --locale en_GB  # search the catalog in another locale
 fitatu recipe list                        # the user's recipes, most used first
 fitatu recipe view ID                     # one recipe: ingredients and nutrients per portion
 fitatu recipe create SPEC                 # create a recipe from the JSON file SPEC; prints its ID
+fitatu recipe edit ID SPEC                # change a recipe's fields given in SPEC; prints its new ID
 fitatu auth login                         # the user runs this, never an agent (see Rules)
 ```
 
@@ -72,15 +73,22 @@ how many of that measure go in. Ingredients are products only: a recipe cannot
 contain another recipe. The command prints the new recipe's ID; check the result
 with `fitatu recipe view ID`. The recipe is private to the user.
 
+`fitatu recipe edit ID SPEC` takes a JSON file with any of the keys of a `recipe
+create` spec, checked the same way, for example `{"serving": 4}`. Each key given
+replaces that field; the others stay as they are. `items` replaces every ingredient,
+so list all of them, at least 2. The command prints the recipe's new ID: from then
+on `recipe view` of the old ID shows `deleted: yes`. A deleted ID cannot be edited;
+take the current one from `recipe list`.
+
 `--json` prints the same data as JSON: `{"date", "foods", "totals"}` from
 `day view`, an array of those from `day list`; an array of
 `{"id", "type", "name", "brand", "energy", "measure": {"id", "name", "grams"}}`
 from `food search`; an array of `{"id", "name", "uses"}` from `recipe list`;
 `{"id", "name", "servings", "deleted", "ingredients", "per_portion"}` from
-`recipe view`; `{"id"}` from `recipe create`. `--raw` prints the service's day
+`recipe view`; `{"id"}` from `recipe create` and `recipe edit`, the new ID. `--raw` prints the service's day
 plan as JSON instead, or an array of day plans from `day list`. With `food search`
 it prints the service's search response; with `recipe view`, the service's recipe;
-with `recipe create`, the service's response; with `recipe list`, the service's
+with `recipe create` and `recipe edit`, the service's response; with `recipe list`, the service's
 search rows for every recipe, deleted ones included, unsorted.
 
 `fitatu <noun> <verb> --help` lists every flag.
@@ -91,6 +99,9 @@ search rows for every recipe, deleted ones included, unsorted.
   they hold the user's login. Every command logs in on its own when it needs to.
 - `recipe create` changes the user's account. Run it only when the user asks for a
   new recipe, and confirm the name, servings and ingredients with them first.
+- `recipe edit` changes the user's account too. Run it only when the user asks to
+  change a recipe, and confirm the changes with them first. Use the new ID it prints
+  for any later command.
 - Read the default text. Add `--json` only when a script parses the output.
 - Start with the summary. Add `--raw` only when the field you need is missing from it:
   raw output is the full service response, many times larger.
@@ -107,6 +118,8 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
 
 - `Unexpected error` or `Fitatu sent a response fitatu-cli could not read` (exit 1): a
   bug in the CLI or a change in Fitatu's API. Show the full line to the user and stop.
+- `Recipe <id> is deleted` (exit 1): an edit or a delete retired that ID. Run
+  `fitatu recipe list`, confirm the current recipe with the user, and retry with its ID.
 - `Fitatu has no recipe with ID <id>` (exit 1): the ID is wrong. Run `fitatu recipe
   list` and retry with an ID from it.
 - `Fitatu rejected the recipe` (exit 1): an `itemId` or `measureId` in the spec is
@@ -114,7 +127,8 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
   spec and retry once.
 - Any other exit 1, such as a rate limit or no network: tell the user the second
   sentence and wait for them.
-- Exit 2: bad arguments, or a `recipe create` spec that fails its checks. The
+- Exit 2: bad arguments, or a `recipe create` or `recipe edit` spec that fails its
+  checks. The
   message names the fix (`Did you mean 'view'?`); correct the call and retry once.
 
 ## Privacy

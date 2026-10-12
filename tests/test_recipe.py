@@ -280,11 +280,12 @@ def test_help_lists_recipe_and_its_verbs(capsys: pytest.CaptureFixture[str]) -> 
 
     assert exit.value.code == 0
     help_text = " ".join(capsys.readouterr().out.split())
-    assert "usage: fitatu recipe [-h] {list,view,create}" in help_text
+    assert "usage: fitatu recipe [-h] {list,view,create,edit}" in help_text
     assert (
         " list list your recipes, most used first "
         "view view one recipe: ingredients and nutrients per portion "
         "create create a recipe from a JSON spec and print its ID "
+        "edit edit a recipe from a JSON spec and print its new ID"
     ) in help_text
 
 
@@ -322,7 +323,7 @@ def test_recipe_verb_help_shows_its_arguments(
         (
             ["recipe"],
             "No command given. Run 'fitatu recipe <command>', one of: list, view, "
-            "create.",
+            "create, edit.",
         ),
         (
             ["recipe", "list", "77"],
