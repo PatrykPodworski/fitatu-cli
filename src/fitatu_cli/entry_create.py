@@ -92,7 +92,15 @@ def food(args: argparse.Namespace, client: Client) -> Json:
     return {"ingredientsServing": recipe.get("serving"), "recipeId": args.recipe}
 
 
-def save_item(client: Client, day: date, plan: Json, key: str, item: Json) -> None:
+def save_item(
+    client: Client,
+    day: date,
+    plan: Json,
+    key: str,
+    item: Json,
+    verb: str = "save",
+    action: str = CHECK_ENTRY,
+) -> None:
     """Writes one item into meal `key` of `day`, whose read is `plan`. Fitatu
     upserts items by `planDayDietItemId` and leaves the day's other items as they
     are, but sets the note and tags to what the write holds, so the write resends
@@ -115,7 +123,7 @@ def save_item(client: Client, day: date, plan: Json, key: str, item: Json) -> No
         if not 400 <= error.code < 500:
             raise
         raise FitatuCliError(
-            f"Fitatu did not save the entry (HTTP {error.code}).", CHECK_ENTRY
+            f"Fitatu did not {verb} the entry (HTTP {error.code}).", action
         ) from error
     if (
         not isinstance(receipts, list)
@@ -126,8 +134,8 @@ def save_item(client: Client, day: date, plan: Json, key: str, item: Json) -> No
     for receipt in receipts:
         if receipt.get("errorMessage"):
             raise FitatuCliError(
-                f"Fitatu did not save the entry ({receipt['errorMessage']}).",
-                CHECK_ENTRY,
+                f"Fitatu did not {verb} the entry ({receipt['errorMessage']}).",
+                action,
             )
 
 
