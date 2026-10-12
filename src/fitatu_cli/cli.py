@@ -11,15 +11,7 @@ import sys
 from collections.abc import Mapping
 from typing import Any, NoReturn, cast
 
-from fitatu_cli import (
-    client,
-    day,
-    food,
-    login,
-    recipe,
-    recipe_create,
-    recipe_delete,
-)
+from fitatu_cli import client, day, food, login, recipe, recipe_create, recipe_delete
 from fitatu_cli.client import Connect
 from fitatu_cli.errors import ISSUES, FitatuCliError, reason
 

@@ -118,7 +118,8 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
   bug in the CLI or a change in Fitatu's API. Show the full line to the user and stop.
 - `Fitatu has no recipe with ID <id>` (exit 1): the ID is wrong. Run `fitatu recipe
   list` and retry with an ID from it.
-- `Recipe <id> is already deleted` (exit 1): nothing to do. Tell the user.
+- `Recipe <id> is already deleted` (exit 1): nothing to delete. Tell the user;
+  `fitatu recipe list` shows the recipes they still have.
 - `Fitatu did not delete recipe <id>` (exit 1): the recipe is not the user's. Run
   `fitatu recipe list` and check the ID with the user.
 - `Fitatu rejected the recipe` (exit 1): an `itemId` or `measureId` in the spec is
