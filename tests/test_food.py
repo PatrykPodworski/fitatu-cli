@@ -1,7 +1,7 @@
 from typing import Any
 
 import pytest
-from conftest import FakeClient, run_json, run_text
+from conftest import FakeClient, http_error, run_json, run_text
 
 from fitatu_cli.cli import main
 from fitatu_cli.day import Json
@@ -14,8 +14,12 @@ CATALOG = (
 LAST_USED = "/api/search/food/{uid}/last-used?page=1&limit=100"
 
 
+LOCALES = "pl_PL, en_GB, en_US, de_DE, cs_CZ, es_ES, it_IT, fr_FR"
+
+
 class RoutedClient:
-    """Answers `get(path)` with `routes[path]` and records the paths."""
+    """Answers `get(path)` with `routes[path]`, or raises it when it is an
+    exception, and records the paths."""
 
     def __init__(self, routes: dict[str, Any]) -> None:
         self.routes = routes
@@ -23,7 +27,10 @@ class RoutedClient:
 
     def get(self, path: str) -> Any:
         self.paths.append(path)
-        return self.routes[path]
+        response = self.routes[path]
+        if isinstance(response, BaseException):
+            raise response
+        return response
 
 
 BREAD: Json = {
@@ -84,6 +91,46 @@ def test_phrase_searches_the_catalog_in_the_account_locale(
 
     assert out == [BREAD_ROW, STEW_ROW]
     assert client.paths == [USER, CATALOG]
+
+
+def test_locale_overrides_the_account_locale_in_the_request(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client = RoutedClient({CATALOG.replace("xx_XX", "en_GB"): [BREAD]})
+
+    out = run_json(
+        ["food", "search", "rye bread", "--locale", "en_GB", "--json"], client, capsys
+    )
+
+    assert out == [BREAD_ROW]
+    assert client.paths == [CATALOG.replace("xx_XX", "en_GB")]
+
+
+def test_an_unknown_locale_goes_to_fitatu_and_its_400_exits_1(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client: Any = RoutedClient({CATALOG: http_error(400)})
+    argv = ["food", "search", "rye bread", "--locale", "xx_XX"]
+
+    assert main(argv, connect=lambda: client) == 1
+    assert client.paths == [CATALOG]
+    assert capsys.readouterr().err == (
+        f"fitatu: Fitatu does not search in locale 'xx_XX'. Use one of: {LOCALES}.\n"
+    )
+
+
+@pytest.mark.parametrize(("argv", "code"), [(["--locale", "xx_XX"], 500), ([], 400)])
+def test_another_search_http_error_is_unexpected(
+    argv: list[str], code: int, capsys: pytest.CaptureFixture[str]
+) -> None:
+    client: Any = RoutedClient(
+        {USER: {"searchLocale": "xx_XX"}, CATALOG: http_error(code)}
+    )
+
+    assert main(["food", "search", "rye bread", *argv], connect=lambda: client) == 1
+    assert capsys.readouterr().err.startswith(
+        f"fitatu: Unexpected error (HTTPError: HTTP Error {code}: error)."
+    )
 
 
 def test_no_phrase_lists_the_last_used_foods(
@@ -227,8 +274,15 @@ def test_search_help_shows_the_phrase(capsys: pytest.CaptureFixture[str]) -> Non
 
     assert exit.value.code == 0
     help_text = " ".join(capsys.readouterr().out.split())
-    assert "usage: fitatu food search [-h] [--raw] [--json] [phrase]" in help_text
+    assert (
+        "usage: fitatu food search [-h] [--locale LOCALE] [--raw] [--json] [phrase]"
+        in help_text
+    )
     assert "phrase what to search for (default: your last-used foods)" in help_text
+    assert (
+        "--locale LOCALE search the catalog in this locale instead of your account's: "
+        f"{LOCALES}" in help_text
+    )
     assert "--raw print the full service response" in help_text
 
 
@@ -238,6 +292,13 @@ def test_search_help_shows_the_phrase(capsys: pytest.CaptureFixture[str]) -> Non
         (
             ["food"],
             "No command given. Run 'fitatu food <command>', one of: search.",
+        ),
+        *(
+            (
+                ["food", "search", "rye", "--locale", locale],
+                f"Invalid locale '{locale}'. Use one of: {LOCALES}.",
+            )
+            for locale in ("en-GB", "en", "EN_gb", "en_GBR", "xen_GB", "")
         ),
         (
             ["food", "search", "rye", "bread"],

@@ -2,11 +2,13 @@
 catalog for a phrase, the foods you used last without one."""
 
 import argparse
+import re
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 
 from fitatu_cli.client import Client, Connect
 from fitatu_cli.day import Json, table
-from fitatu_cli.errors import unreadable
+from fitatu_cli.errors import FitatuCliError, unreadable
 
 CATALOG = (
     "/api/search/new/food?hasFilters=false&accessType[]=FREE&accessType[]=PREMIUM"
@@ -14,6 +16,10 @@ CATALOG = (
 )
 LAST_USED = "/api/search/food/{uid}/last-used?page=1&limit=100"
 COLUMNS = ("id", "type", "name", "brand", "energy_kcal", "measure")
+# The catalog locales that returned foods on 2026-10-12; Fitatu answers 400 for
+# others.
+LOCALES = ("pl_PL", "en_GB", "en_US", "de_DE", "cs_CZ", "es_ES", "it_IT", "fr_FR")
+USE_LOCALES = f"Use one of: {', '.join(LOCALES)}."
 
 
 def search_locale(client: Client) -> str:
@@ -23,11 +29,26 @@ def search_locale(client: Client) -> str:
     return locale
 
 
-def search_response(client: Client, phrase: str | None) -> list[Json]:
+def locale(value: str) -> str:
+    if not re.fullmatch(r"[a-z]{2}_[A-Z]{2}", value):
+        raise argparse.ArgumentTypeError(f"Invalid locale '{value}'. {USE_LOCALES}")
+    return value
+
+
+def search_response(
+    client: Client, phrase: str | None, override: str | None
+) -> list[Json]:
     response: object
     if phrase:
-        query = urlencode({"phrase": phrase, "locale": search_locale(client)})
-        response = client.get(CATALOG + query)
+        query = {"phrase": phrase, "locale": override or search_locale(client)}
+        try:
+            response = client.get(CATALOG + urlencode(query))
+        except HTTPError as error:
+            if error.code != 400 or override is None:
+                raise
+            raise FitatuCliError(
+                f"Fitatu does not search in locale '{override}'.", USE_LOCALES
+            ) from error
     else:
         response = client.get(LAST_USED)
     if not isinstance(response, list) or not all(
@@ -58,7 +79,7 @@ def food_row(item: Json) -> Json:
 
 
 def search(args: argparse.Namespace, connect: Connect) -> list[Json]:
-    response = search_response(connect(), args.phrase)
+    response = search_response(connect(), args.phrase, args.locale)
     if args.raw:
         return response
     return [food_row(item) for item in response]
@@ -104,6 +125,12 @@ def register(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") 
     )
     search_parser.add_argument(
         "phrase", nargs="?", help="what to search for (default: your last-used foods)"
+    )
+    search_parser.add_argument(
+        "--locale",
+        type=locale,
+        help="search the catalog in this locale instead of your account's: "
+        + ", ".join(LOCALES),
     )
     search_parser.add_argument(
         "--raw", action="store_true", help="print the full service response"

@@ -155,6 +155,14 @@ id    type     name       brand   energy_kcal  measure
 `-` marks a missing value or a food without a measure. No match prints
 `no foods found`.
 
+To search in another locale without changing your account setting, add `--locale`.
+Fitatu's catalog answers for `pl_PL`, `en_GB`, `en_US`, `de_DE`, `cs_CZ`, `es_ES`,
+`it_IT` and `fr_FR`.
+
+```sh
+fitatu food search "rye bread" --locale en_GB
+```
+
 With `--json`, it prints a JSON array:
 
 ```json

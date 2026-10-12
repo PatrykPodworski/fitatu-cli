@@ -13,6 +13,7 @@ description: Use when the user asks about their Fitatu food diary — what they 
 fitatu day view [DATE]                    # one day's foods and totals; DATE: today | yesterday | YYYY-MM-DD, default today
 fitatu day list --from DATE [--to DATE]   # each day in the range, oldest first; --to defaults to today
 fitatu food search [PHRASE]               # foods matching PHRASE; without it, the foods the user used last
+fitatu food search PHRASE --locale en_GB  # search the catalog in another locale, here English
 fitatu recipe list                        # the user's recipes, most used first
 fitatu recipe view ID                     # one recipe: ingredients and nutrients per portion
 fitatu auth login                         # the user runs this, never an agent (see Rules)
@@ -34,6 +35,11 @@ prints a table with one row per food: `id`, `type` (`product` or `recipe`), `nam
 `brand`, `energy_kcal`, and `measure`, the one measure the search returns with the
 food, as `<measure id> <name> (<grams> g)`. Quote a multi-word phrase. `-` marks a
 missing value or a food without a measure. No match prints `no foods found` and exits 0.
+`--locale` searches in another locale without changing the account setting. Fitatu's
+catalog answers for `pl_PL`, `en_GB`, `en_US`, `de_DE`, `cs_CZ`, `es_ES`, `it_IT` and
+`fr_FR`; results can still include a few foods in the account's language. A value not
+in the `xx_XX` form exits 2; a well-formed locale Fitatu does not know exits 1 with
+the list. Without a phrase, `--locale` has no effect.
 
 `fitatu recipe list` prints a table with the columns `id`, `uses` (how many times
 the user logged the recipe) and `name`, most used first. It hides deleted recipes.
