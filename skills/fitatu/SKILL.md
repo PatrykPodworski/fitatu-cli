@@ -76,12 +76,13 @@ with `fitatu recipe view ID`. The recipe is private to the user.
 `day view`, an array of those from `day list`; an array of
 `{"id", "type", "name", "brand", "energy", "measure": {"id", "name", "grams"}}`
 from `food search`; an array of `{"id", "name", "uses"}` from `recipe list`;
-`{"id", "name", "servings", "deleted", "ingredients", "per_portion"}` from
-`recipe view`; `{"id"}` from `recipe create`. `--raw` prints the service's day
-plan as JSON instead, or an array of day plans from `day list`. With `food search`
-it prints the service's search response; with `recipe view`, the service's recipe;
-with `recipe create`, the service's response; with `recipe list`, the service's
-search rows for every recipe, deleted ones included, unsorted.
+`{"id", "name", "servings", "deleted", "ingredients": [{"name", "quantity", "measure"}],
+"per_portion"}` from `recipe view`, with `quantity` a number or null; `{"id"}` from
+`recipe create`. `--raw` prints the service's day plan as JSON instead, or an array
+of day plans from `day list`. With `food search` it prints the service's search
+response; with `recipe view`, the service's recipe; with `recipe create`, the
+service's response; with `recipe list`, the service's search rows for every recipe,
+deleted ones included, unsorted.
 
 `fitatu <noun> <verb> --help` lists every flag.
 
