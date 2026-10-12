@@ -227,6 +227,47 @@ def test_recipe_view_prints_a_dash_for_a_missing_ingredient_field(
     )
 
 
+QUANTITY_STRINGS = {
+    "items": [
+        {"name": "Rice", "measureQuantity": "1.50", "measureName": "cup"},
+        {"name": "Salt", "measureQuantity": "1.00", "measureName": "pinch"},
+        {"name": "Water", "measureName": "l"},
+    ]
+}
+
+
+def test_recipe_view_prints_a_quantity_string_as_a_number(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    out = run_json(
+        ["recipe", "view", "77", "--json"], FakeClient(get=QUANTITY_STRINGS), capsys
+    )
+    text = run_text(["recipe", "view", "77"], FakeClient(get=QUANTITY_STRINGS), capsys)
+
+    assert out["ingredients"] == [
+        {"name": "Rice", "quantity": 1.5, "measure": "cup"},
+        {"name": "Salt", "quantity": 1.0, "measure": "pinch"},
+        {"name": "Water", "quantity": None, "measure": "l"},
+    ]
+    assert (
+        "ingredient  quantity  measure\n"
+        "Rice        1.5       cup\n"
+        "Salt        1         pinch\n"
+        "Water       -         l\n"
+    ) in text
+
+
+def test_recipe_view_rejects_a_quantity_that_is_not_a_number(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client = FakeClient(get={"items": [{"measureQuantity": "a cup"}]})
+
+    assert main(["recipe", "view", "77"], connect=lambda: client) == 1
+    assert capsys.readouterr().err.startswith(
+        "fitatu: Fitatu sent a response fitatu-cli could not read."
+    )
+
+
 def test_recipe_view_raw_prints_the_response_unchanged(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
