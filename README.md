@@ -1,6 +1,7 @@
 # fitatu-cli
 
-`fitatu` reads your Fitatu food diary and prints it as JSON.
+`fitatu` reads your Fitatu food diary and prints it as plain text, or as JSON with
+`--json`.
 
 **Unofficial.** This project is not affiliated with Fitatu. It uses the private API of
 the Fitatu web app, so it may break when Fitatu changes that API.
@@ -53,6 +54,20 @@ Prints the foods logged on one day and the day totals. `DATE` defaults to `today
 fitatu day view 2026-10-11
 ```
 
+```text
+date: 2026-10-11
+meal       name          quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+Breakfast  Oat porridge  1         bowl     320.0        54.2            11.0       6.5    7.1      3.4       0.1
+Lunch      Lentil soup   300       g        270.0        38.0            16.5       4.2    9.0      5.1       1.8
+total                                       590.0        92.2            27.5       10.7   16.1     8.5       1.9
+```
+
+The first line is the date. A table of foods follows, one row per food, with a `total`
+row at the end. `-` marks a missing name, quantity or measure. A missing nutrient
+counts as 0. A day with nothing logged prints the date line and `no foods logged`.
+
+With `--json`, it prints the same data as JSON:
+
 ```json
 {
   "date": "2026-10-11",
@@ -96,76 +111,29 @@ fitatu day view 2026-10-11
 }
 ```
 
-A missing nutrient counts as 0. A day with nothing logged has `"foods": []` and every
-total 0.
+A day with nothing logged has `"foods": []` and every total 0.
 
 ### `fitatu day list --from DATE --to DATE`
 
-Prints a JSON array with one day object per day, oldest first. `--to` defaults to
-`today`. A range covers at most 31 days, counting both ends.
+Prints one day block per day, oldest first, with a blank line between blocks. `--to`
+defaults to `today`. A range covers at most 31 days, counting both ends.
 
 ```sh
 fitatu day list --from 2026-10-09 --to 2026-10-10
 ```
 
-```json
-[
-  {
-    "date": "2026-10-09",
-    "foods": [
-      {
-        "meal": "Breakfast",
-        "name": "Oat porridge",
-        "quantity": 1,
-        "measure": "bowl",
-        "energy": 320,
-        "carbohydrate": 54.2,
-        "protein": 11.0,
-        "fat": 6.5,
-        "fiber": 7.1,
-        "sugars": 3.4,
-        "salt": 0.1
-      }
-    ],
-    "totals": {
-      "energy": 320.0,
-      "carbohydrate": 54.2,
-      "protein": 11.0,
-      "fat": 6.5,
-      "fiber": 7.1,
-      "sugars": 3.4,
-      "salt": 0.1
-    }
-  },
-  {
-    "date": "2026-10-10",
-    "foods": [
-      {
-        "meal": "Lunch",
-        "name": "Lentil soup",
-        "quantity": 300,
-        "measure": "g",
-        "energy": 270,
-        "carbohydrate": 38.0,
-        "protein": 16.5,
-        "fat": 4.2,
-        "fiber": 9.0,
-        "sugars": 5.1,
-        "salt": 1.8
-      }
-    ],
-    "totals": {
-      "energy": 270.0,
-      "carbohydrate": 38.0,
-      "protein": 16.5,
-      "fat": 4.2,
-      "fiber": 9.0,
-      "sugars": 5.1,
-      "salt": 1.8
-    }
-  }
-]
+```text
+date: 2026-10-09
+meal       name          quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+Breakfast  Oat porridge  1         bowl     320.0        54.2            11.0       6.5    7.1      3.4       0.1
+total                                       320.0        54.2            11.0       6.5    7.1      3.4       0.1
+
+date: 2026-10-10
+no foods logged
 ```
+
+With `--json`, it prints a JSON array of the day objects `fitatu day view --json`
+prints.
 
 ### `fitatu auth login`
 
@@ -176,11 +144,11 @@ session.
 fitatu auth login
 ```
 
-```json
-{
-  "session": "/Users/you/.fitatu/session.json"
-}
+```text
+Saved the session to /Users/you/.fitatu/session.json.
 ```
+
+With `--json`, it prints `{"session": "<path>"}`.
 
 `fitatu <noun> <verb> --help` lists every option.
 
@@ -189,20 +157,22 @@ fitatu auth login
 - `energy` is in kcal.
 - `carbohydrate`, `protein`, `fat`, `fiber`, `sugars` and `salt` are in grams.
 - Nutrient values are rounded to one decimal.
+- In text output, each nutrient column names its unit: `energy_kcal`,
+  `carbohydrate_g` and so on.
 
 There is no sodium output. Fitatu sends sodium per item in milligrams, and many items
 do not have it, so a daily sodium sum is too low. Use `salt` instead.
 
 ## Raw output
 
-`fitatu day view --raw` prints Fitatu's response for the day unchanged. With
-`fitatu day list --raw`, it prints an array of those responses. Use it when you need a field the summary does not
-have.
+`fitatu day view --raw` prints Fitatu's response for the day unchanged, as JSON. With
+`fitatu day list --raw`, it prints an array of those responses. Use it when you need a
+field the summary does not have. `--raw` prints JSON without `--json`.
 
 ## Output and exit codes
 
-Results are JSON on stdout, with exit code 0. An error is one line on stderr,
-`fitatu: <What happened.> <What to do.>`:
+Results are plain text on stdout, or JSON with `--json` or `--raw`, with exit code 0.
+An error is one line on stderr, `fitatu: <What happened.> <What to do.>`:
 
 - Exit 1: a Fitatu, login or data error.
 - Exit 2: bad arguments.

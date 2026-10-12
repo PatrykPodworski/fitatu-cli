@@ -1,6 +1,7 @@
-"""`fitatu` entry point. A command is a verb in a noun group. It sets `run` and
-`parser`, its own parser, as defaults; `run` gets the parsed args and a `connect`
-function, returns JSON-serializable data, and `main` prints it to stdout."""
+"""`fitatu` entry point. A command is a verb in a noun group. It sets `run`,
+`text` and `parser`, its own parser, as defaults; `run` gets the parsed args and a
+`connect` function and returns JSON-serializable data. `main` prints that data on
+stdout through `text`, or as JSON with `--json` or `--raw`."""
 
 import argparse
 import difflib
@@ -85,6 +86,15 @@ class CliParser(argparse.ArgumentParser):
         for command in self.commands.values():
             cast(CliParser, command).name_commands()
 
+    def add_json_option(self) -> None:
+        """Gives every command, here and below, a `--json` flag."""
+        if not self.commands:
+            self.add_argument(
+                "--json", action="store_true", help="print JSON instead of text"
+            )
+        for command in self.commands.values():
+            cast(CliParser, command).add_json_option()
+
     def reject(self, argv: list[str], args: argparse.Namespace, arg: str) -> NoReturn:
         """Reports an argument the parser of the parsed command did not consume."""
         subparser = args.parser
@@ -121,7 +131,7 @@ def round_floats(value: Any) -> Any:
 
 
 def build_parser() -> CliParser:
-    parser = CliParser(prog=NAME, description="Read your Fitatu food diary as JSON.")
+    parser = CliParser(prog=NAME, description="Read your Fitatu food diary.")
     parser.add_argument(
         "--debug",
         action="store_true",
@@ -135,6 +145,7 @@ def build_parser() -> CliParser:
     )
     login.register(subparsers)
     day.register(subparsers)
+    parser.add_json_option()
     parser.name_commands()
     return parser
 
@@ -160,9 +171,10 @@ def main(argv: list[str] | None = None, connect: Connect = client.connect) -> in
             )
         )
     else:
-        if not getattr(args, "raw", False):
+        raw = getattr(args, "raw", False)
+        if not raw:
             result = round_floats(result)
-        print(json.dumps(result, indent=2))
+        print(json.dumps(result, indent=2) if raw or args.json else args.text(result))
         return 0
     print(f"{NAME}: {message}", file=sys.stderr)
     return 1

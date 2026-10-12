@@ -39,6 +39,11 @@ def run_json(argv: list[str], client: Any, capsys: pytest.CaptureFixture[str]) -
     return json.loads(capsys.readouterr().out)
 
 
+def run_text(argv: list[str], client: Any, capsys: pytest.CaptureFixture[str]) -> str:
+    assert main(argv, connect=lambda: client) == 0
+    return capsys.readouterr().out
+
+
 Json = dict[str, Any]
 NOW = 1_800_000_000
 EMAIL = "user@example.com"

@@ -9,10 +9,14 @@ def login(_args: argparse.Namespace, connect: Connect) -> dict[str, str]:
     return {"session": str(auth.session_path())}
 
 
+def saved(result: dict[str, str]) -> str:
+    return f"Saved the session to {result['session']}."
+
+
 def register(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
     auth_parser = subparsers.add_parser("auth", help="log in to Fitatu")
     login_parser = auth_parser.add_subparsers(required=True).add_parser(
         "login",
         help="log in as FITATU_EMAIL with the Keychain password, save the session",
     )
-    login_parser.set_defaults(run=login, parser=login_parser)
+    login_parser.set_defaults(run=login, text=saved, parser=login_parser)

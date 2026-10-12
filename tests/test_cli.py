@@ -21,7 +21,7 @@ class RaisingClient:
 @pytest.fixture
 def read_command(monkeypatch: pytest.MonkeyPatch) -> None:
     """Adds a `status view` command with a `--raw` flag, the shape of a read
-    command."""
+    command. Its text output is the `state` field."""
     register_login = login.register
 
     def register(
@@ -36,7 +36,9 @@ def read_command(monkeypatch: pytest.MonkeyPatch) -> None:
             "--raw", action="store_true", help="print the full service response"
         )
         view.set_defaults(
-            run=lambda args, connect: connect().get("/status"), parser=view
+            run=lambda args, connect: connect().get("/status"),
+            text=lambda result: f"state: {result['state']}",
+            parser=view,
         )
 
     monkeypatch.setattr(login, "register", register)
@@ -262,10 +264,21 @@ def test_parser_without_commands_lists_none() -> None:
 
 
 @pytest.mark.usefixtures("read_command")
-def test_prints_json_indented_by_2(capsys: pytest.CaptureFixture[str]) -> None:
+def test_prints_text_by_default(capsys: pytest.CaptureFixture[str]) -> None:
+    client = FakeClient(get={"state": "ok", "load": 0.5})
+
+    assert main(["status", "view"], connect=lambda: client) == 0
+    assert capsys.readouterr().out == "state: ok\n"
+
+
+@pytest.mark.usefixtures("read_command")
+@pytest.mark.parametrize("flag", ["--json", "--raw"])
+def test_prints_json_indented_by_2(
+    flag: str, capsys: pytest.CaptureFixture[str]
+) -> None:
     client = FakeClient(get={"x": [1]})
 
-    assert main(["status", "view", "--raw"], connect=lambda: client) == 0
+    assert main(["status", "view", flag], connect=lambda: client) == 0
     assert capsys.readouterr().out == '{\n  "x": [\n    1\n  ]\n}\n'
 
 
@@ -344,7 +357,7 @@ def test_summary_rounds_floats_raw_does_not(
 ) -> None:
     client = FakeClient(get={"state": "ok", "load": 0.800000011920929})
 
-    assert main(["status", "view"], connect=lambda: client) == 0
+    assert main(["status", "view", "--json"], connect=lambda: client) == 0
     assert '"load": 0.8\n' in capsys.readouterr().out
     assert main(["status", "view", "--raw"], connect=lambda: client) == 0
     assert '"load": 0.800000011920929\n' in capsys.readouterr().out

@@ -3,7 +3,7 @@ from datetime import date
 from typing import Any
 
 import pytest
-from conftest import FakeClient, run_json
+from conftest import FakeClient, run_json, run_text
 
 from fitatu_cli import day
 from fitatu_cli.cli import main
@@ -191,7 +191,7 @@ def test_day_prints_foods_in_response_meal_order(
         }
     )
 
-    out = run_json(["day", "view", "2026-07-05"], client, capsys)
+    out = run_json(["day", "view", "2026-07-05", "--json"], client, capsys)
 
     assert client.calls == [
         ("get", ("/api/diet-and-activity-plan/{uid}/day/2026-07-05",), {})
@@ -225,7 +225,7 @@ def test_day_defaults_to_today_and_prints_an_empty_day(
 ) -> None:
     client = FakeClient(get={"dietPlan": {"breakfast": {"items": []}}})
 
-    out = run_json(["day", "view"], client, capsys)
+    out = run_json(["day", "view", "--json"], client, capsys)
 
     assert client.calls[0][1] == (
         f"/api/diet-and-activity-plan/{{uid}}/day/{date.today():%Y-%m-%d}",
@@ -275,8 +275,11 @@ def test_help_lists_day_and_its_verbs(capsys: pytest.CaptureFixture[str]) -> Non
 @pytest.mark.parametrize(
     ("verb", "usage"),
     [
-        ("view", "usage: fitatu day view [-h] [--raw] [date]"),
-        ("list", "usage: fitatu day list [-h] [--from DATE] [--to DATE] [--raw]"),
+        ("view", "usage: fitatu day view [-h] [--raw] [--json] [date]"),
+        (
+            "list",
+            "usage: fitatu day list [-h] [--from DATE] [--to DATE] [--raw] [--json]",
+        ),
     ],
 )
 def test_day_verb_help_shows_its_options(
@@ -289,6 +292,7 @@ def test_day_verb_help_shows_its_options(
     help_text = " ".join(capsys.readouterr().out.split())
     assert usage in help_text
     assert "--raw print the full service response" in help_text
+    assert "--json print JSON instead of text" in help_text
 
 
 PATH = "/api/diet-and-activity-plan/{uid}/day/"
@@ -311,7 +315,10 @@ def test_day_range_logs_in_once_and_reads_each_day_in_order(
         return client
 
     assert (
-        main(["day", "list", "--from", "2026-06-30", "--to", "2026-07-02"], connect)
+        main(
+            ["day", "list", "--from", "2026-06-30", "--to", "2026-07-02", "--json"],
+            connect,
+        )
         == 0
     )
     out = json.loads(capsys.readouterr().out)
@@ -332,7 +339,7 @@ def test_day_from_alone_runs_to_today(
     monkeypatch.setattr(day, "date", Today)
     client = FakeClient(get={})
 
-    out = run_json(["day", "list", "--from", "2026-07-04"], client, capsys)
+    out = run_json(["day", "list", "--from", "2026-07-04", "--json"], client, capsys)
 
     assert [call[1][0] for call in client.calls] == [
         f"{PATH}2026-07-04",
@@ -346,7 +353,9 @@ def test_day_from_today_alone_reads_today(
 ) -> None:
     monkeypatch.setattr(day, "date", Today)
 
-    out = run_json(["day", "list", "--from", "2026-07-05"], FakeClient(get={}), capsys)
+    out = run_json(
+        ["day", "list", "--from", "2026-07-05", "--json"], FakeClient(get={}), capsys
+    )
 
     assert [item["date"] for item in out] == ["2026-07-05"]
 
@@ -355,7 +364,9 @@ def test_day_range_of_31_days_passes(capsys: pytest.CaptureFixture[str]) -> None
     client = FakeClient(get={})
 
     out = run_json(
-        ["day", "list", "--from", "2026-07-01", "--to", "2026-07-31"], client, capsys
+        ["day", "list", "--from", "2026-07-01", "--to", "2026-07-31", "--json"],
+        client,
+        capsys,
     )
 
     assert len(out) == 31
@@ -366,7 +377,7 @@ def test_day_range_of_one_day_prints_an_array(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     out = run_json(
-        ["day", "list", "--from", "2026-07-05", "--to", "2026-07-05"],
+        ["day", "list", "--from", "2026-07-05", "--to", "2026-07-05", "--json"],
         FakeClient(get={}),
         capsys,
     )
@@ -405,8 +416,13 @@ LIST_HELP = "Run 'fitatu day list --help'"
         ),
         (
             ["view", "2026-07-05", "--to", "2026-07-06"],
-            "Unknown option '--to' for 'fitatu day view'. "
+            "Unknown option '--to' for 'fitatu day view'. Did you mean '--json'? "
             "Run 'fitatu day view --help' for all options.",
+        ),
+        (
+            ["--json", "view", "2026-07-05"],
+            "Option '--json' goes after the command. "
+            "Run 'fitatu day view --json 2026-07-05'.",
         ),
         (
             ["--raw", "view", "2026-07-05"],
@@ -443,3 +459,108 @@ def test_day_bad_range_exits_2(
     assert exit.value.code == 2
     assert capsys.readouterr().err == f"fitatu: {error}\n"
     assert client.calls == []
+
+
+OATS = {
+    "name": "Oats",
+    "measureQuantity": 80,
+    "measureName": "g",
+    "energy": 300,
+    "carbohydrate": 50.44,
+    "protein": 10,
+    "fat": 5.6,
+    "fiber": 8,
+    "sugars": 1,
+    "salt": 0,
+}
+STEW = {
+    "name": "Stew",
+    "measureQuantity": 1.5,
+    "measureName": "portion",
+    "energy": 540.3,
+    "carbohydrate": 60,
+    "protein": 30,
+    "fat": 18,
+    "fiber": 6,
+    "sugars": 5,
+    "salt": 1.8,
+}
+OATS_AND_STEW = """\
+date: 2026-07-05
+meal       name  quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+Breakfast  Oats  80        g        300.0        50.4            10.0       5.6    8.0      1.0       0.0
+Lunch      Stew  1.5       portion  540.3        60.0            30.0       18.0   6.0      5.0       1.8
+total                               840.3        110.4           40.0       23.6   14.0     6.0       1.8
+"""  # noqa: E501
+
+
+def test_day_prints_a_table_of_foods_with_a_total_row(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client = FakeClient(
+        get={
+            "dietPlan": {
+                "breakfast": {"mealName": "Breakfast", "items": [OATS]},
+                "lunch": {"mealName": "Lunch", "items": [STEW]},
+            }
+        }
+    )
+
+    assert run_text(["day", "view", "2026-07-05"], client, capsys) == OATS_AND_STEW
+
+
+def test_day_prints_a_dash_for_a_missing_value_and_0_for_a_missing_nutrient(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client = FakeClient(get=plan({"name": "Tea", "measureQuantity": 1, "energy": 2}))
+
+    assert run_text(["day", "view", "2026-07-05"], client, capsys) == (
+        """\
+date: 2026-07-05
+meal   name  quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+lunch  Tea   1         -        2.0          0.0             0.0        0.0    0.0      0.0       0.0
+total                           2.0          0.0             0.0        0.0    0.0      0.0       0.0
+"""  # noqa: E501
+    )
+
+
+def test_day_prints_no_foods_logged_for_an_empty_day(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client = FakeClient(get={"dietPlan": {"breakfast": {"items": []}}})
+
+    assert run_text(["day", "view", "2026-07-05"], client, capsys) == (
+        "date: 2026-07-05\nno foods logged\n"
+    )
+
+
+def test_day_list_prints_one_block_per_day_with_a_blank_line_between(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client = FakeClient(get=plan({"name": "Tea", "measureQuantity": 1, "energy": 2}))
+
+    assert run_text(
+        ["day", "list", "--from", "2026-07-04", "--to", "2026-07-05"], client, capsys
+    ) == (
+        """\
+date: 2026-07-04
+meal   name  quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+lunch  Tea   1         -        2.0          0.0             0.0        0.0    0.0      0.0       0.0
+total                           2.0          0.0             0.0        0.0    0.0      0.0       0.0
+
+date: 2026-07-05
+meal   name  quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+lunch  Tea   1         -        2.0          0.0             0.0        0.0    0.0      0.0       0.0
+total                           2.0          0.0             0.0        0.0    0.0      0.0       0.0
+"""  # noqa: E501
+    )
+
+
+def test_day_raw_ignores_json_flag(capsys: pytest.CaptureFixture[str]) -> None:
+    response = {"dietPlan": {"lunch": {"items": [{"energy": 1.23456}]}}}
+
+    assert run_json(
+        ["day", "view", "2026-07-05", "--raw", "--json"],
+        FakeClient(get=response),
+        capsys,
+    ) == (response)
