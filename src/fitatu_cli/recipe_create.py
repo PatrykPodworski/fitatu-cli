@@ -3,7 +3,8 @@ it to Fitatu's recipe catalog."""
 
 import argparse
 import json
-from typing import Any
+from collections.abc import Callable, Iterable
+from typing import Any, cast
 from urllib.error import HTTPError
 
 from fitatu_cli.client import Connect
@@ -11,21 +12,32 @@ from fitatu_cli.errors import FitatuCliError, unreadable
 
 Json = dict[str, Any]
 
-SHAPE = "Run 'fitatu recipe create --help' for the spec's shape."
 SEARCH = "Take itemId and measureId from 'fitatu food search'."
 ITEM_KEYS = ("itemId", "measureId", "measureQuantity")
 # The web app refuses a recipe with fewer ingredients; the service accepts one.
 MIN_ITEMS = 2
+NEW_RECIPE: Json = {
+    "recipeDescription": None,
+    "preparationTime": "",
+    "cookingTime": None,
+    "categories": [],
+    "mealSchema": [],
+    "tags": [],
+    "shared": False,
+}
 
 
-def spec_error(path: str, problem: str) -> argparse.ArgumentTypeError:
-    return argparse.ArgumentTypeError(f"Recipe spec '{path}' {problem} {SHAPE}")
+def spec_error(path: str, verb: str, problem: str) -> argparse.ArgumentTypeError:
+    return argparse.ArgumentTypeError(
+        f"Recipe spec '{path}' {problem} "
+        f"Run 'fitatu recipe {verb} --help' for the spec's shape."
+    )
 
 
-def check_items(path: str, items: object) -> None:
+def check_items(path: str, verb: str, items: object) -> None:
     if not isinstance(items, list) or len(items) < MIN_ITEMS:
         raise spec_error(
-            path, f'needs "items": a list of at least {MIN_ITEMS} ingredients.'
+            path, verb, f'needs "items": a list of at least {MIN_ITEMS} ingredients.'
         )
     for number, item in enumerate(items, start=1):
         where = f"Item {number} in recipe spec '{path}'"
@@ -36,8 +48,8 @@ def check_items(path: str, items: object) -> None:
                 raise argparse.ArgumentTypeError(f'{where} needs "{key}". {SEARCH}')
 
 
-def recipe_spec(path: str) -> Json:
-    """The spec in the file at `path`, checked before any request."""
+def load_spec(path: str, verb: str) -> Json:
+    """The JSON object in the file at `path`."""
     try:
         with open(path) as file:
             spec = json.load(file)
@@ -48,46 +60,60 @@ def recipe_spec(path: str) -> Json:
         ) from None
     except json.JSONDecodeError as error:
         raise spec_error(
-            path, f"is not valid JSON ({error.msg}, line {error.lineno})."
+            path, verb, f"is not valid JSON ({error.msg}, line {error.lineno})."
         ) from None
     if not isinstance(spec, dict):
-        raise spec_error(path, "is not a JSON object.")
-    name = spec.get("name")
-    if not isinstance(name, str) or not name:
-        raise spec_error(path, 'needs "name": a non-empty string.')
-    serving = spec.get("serving")
-    if (
-        isinstance(serving, bool)
-        or not isinstance(serving, int | float)
-        or serving <= 0
-    ):
-        raise spec_error(path, 'needs "serving": a positive number.')
-    check_items(path, spec.get("items"))
+        raise spec_error(path, verb, "is not a JSON object.")
+    return cast(Json, spec)
+
+
+def check_fields(path: str, verb: str, spec: Json, keys: Iterable[str]) -> None:
+    """Checks the spec's `keys`; a missing key fails as an invalid one."""
+    if "name" in keys:
+        name = spec.get("name")
+        if not isinstance(name, str) or not name:
+            raise spec_error(path, verb, 'needs "name": a non-empty string.')
+    if "serving" in keys:
+        serving = spec.get("serving")
+        if (
+            isinstance(serving, bool)
+            or not isinstance(serving, int | float)
+            or serving <= 0
+        ):
+            raise spec_error(path, verb, 'needs "serving": a positive number.')
+    if "items" in keys:
+        check_items(path, verb, spec.get("items"))
+
+
+def recipe_spec(path: str) -> Json:
+    """The spec in the file at `path`, checked before any request."""
+    spec = load_spec(path, "create")
+    check_fields(path, "create", spec, ("name", "serving", "items"))
     return spec
 
 
-def request_body(spec: Json) -> Json:
-    """The body the web app sends for a new private recipe."""
-    return {
-        "name": spec["name"],
-        "serving": str(spec["serving"]),
-        "items": [
+def spec_fields(spec: Json) -> Json:
+    """The request body fields the spec sets, as the web app sends them."""
+    fields: Json = {}
+    if "name" in spec:
+        fields["name"] = spec["name"]
+    if "serving" in spec:
+        fields["serving"] = str(spec["serving"])
+    if "description" in spec:
+        fields["recipeDescription"] = spec["description"]
+    if "items" in spec:
+        fields["items"] = [
             {"type": "PRODUCT", **{key: item[key] for key in ITEM_KEYS}}
             for item in spec["items"]
-        ],
-        "recipeDescription": spec.get("description"),
-        "preparationTime": "",
-        "cookingTime": None,
-        "categories": [],
-        "mealSchema": [],
-        "tags": [],
-        "shared": False,
-    }
+        ]
+    return fields
 
 
-def create_recipe(args: argparse.Namespace, connect: Connect) -> Json:
+def saved(args: argparse.Namespace, save: Callable[[], Json]) -> Json:
+    """Runs `save`, a request that writes a recipe, and returns what the command
+    prints: the new recipe's ID, or the response with `--raw`."""
     try:
-        response = connect().post("/api/recipes", request_body(args.spec))
+        response = save()
     except HTTPError as error:
         if not 400 <= error.code < 500:
             raise
@@ -100,6 +126,11 @@ def create_recipe(args: argparse.Namespace, connect: Connect) -> Json:
     if args.raw:
         return response
     return {"id": response["id"]}
+
+
+def create_recipe(args: argparse.Namespace, connect: Connect) -> Json:
+    body = NEW_RECIPE | spec_fields(args.spec)
+    return saved(args, lambda: connect().post("/api/recipes", body))
 
 
 def register(verbs: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:

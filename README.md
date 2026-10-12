@@ -223,9 +223,10 @@ energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
 `-` marks a missing name, servings, quantity or measure. A missing nutrient counts as
 0. A recipe without ingredients prints `no ingredients`.
 
-Editing a recipe in Fitatu gives it a new ID and marks the old one deleted. `recipe
-view` still shows a deleted recipe, with `deleted: yes`, because diary entries logged
-before the edit point to it. `recipe list` shows only the latest version.
+Editing a recipe's ingredients or their quantities in Fitatu gives it a new ID and
+marks the old one deleted; other edits keep the ID. `recipe view` still shows a
+deleted recipe, with `deleted: yes`, because diary entries logged before the edit
+point to it. `recipe list` shows only the latest version.
 
 With `--json`, it prints `{"id", "name", "servings", "deleted", "ingredients",
 "per_portion"}`. Each ingredient is `{"name", "quantity", "measure"}`, and

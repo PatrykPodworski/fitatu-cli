@@ -43,7 +43,8 @@ def test_first_get_logs_in_and_saves_session(
     assert client(http).get(DAY) == PLAN
 
     assert http.paths == [LOGIN, DAY_101]
-    _, login_headers, login_body = http.calls[0]
+    assert [method for *_, method in http.calls] == ["POST", "GET"]
+    _, login_headers, login_body, _ = http.calls[0]
     assert login_body == {"_username": EMAIL, "_password": "fake password "}
     assert "Authorization" not in login_headers
     session = json.loads(account.read_text())
@@ -64,7 +65,7 @@ def test_data_request_carries_session_headers(account: Path) -> None:
 
     client(http).get(DAY)
 
-    _, headers, body = http.calls[0]
+    _, headers, body, _ = http.calls[0]
     assert body is None
     assert headers["Authorization"] == f"Bearer {TOKEN}"
     assert headers["API-Cluster"] == "en-gb101"
@@ -97,8 +98,9 @@ def test_expiring_token_is_refreshed(account: Path, ttl: int) -> None:
     assert client(http).get(DAY) == PLAN
 
     assert http.paths == [REFRESH, DAY_101]
-    _, headers, body = http.calls[0]
+    _, headers, body, method = http.calls[0]
     assert body == {"refresh_token": "fake-refresh"}
+    assert method == "POST"
     assert headers["APP-UUID"] == APP_UUID
     assert http.calls[1][1]["Authorization"] == f"Bearer {NEW_TOKEN}"
     assert json.loads(account.read_text()) == {
@@ -120,7 +122,7 @@ def test_old_session_file_with_app_uuid_still_works(account: Path) -> None:
 
     assert client(http).get(DAY) == PLAN
 
-    assert [headers["APP-UUID"] for _, headers, _ in http.calls] == [APP_UUID] * 2
+    assert [headers["APP-UUID"] for _, headers, *_ in http.calls] == [APP_UUID] * 2
     assert json.loads(account.read_text()) == {
         "token": NEW_TOKEN,
         "refresh_token": "fake-refresh",
@@ -172,9 +174,35 @@ def test_post_sends_the_body_with_session_headers(account: Path) -> None:
 
     assert client(http).post("/api/recipes", {"name": "Stew"}) == {"id": 77}
 
-    _, headers, body = http.calls[0]
+    _, headers, body, method = http.calls[0]
     assert body == {"name": "Stew"}
+    assert method == "POST"
     assert headers["Authorization"] == f"Bearer {TOKEN}"
+
+
+def test_put_sends_the_body_with_session_headers(account: Path) -> None:
+    save(account, token=TOKEN)
+    http = FakeHttp({"/api/recipes/77": [{"id": 78}]})
+
+    assert client(http).put("/api/recipes/77", {"name": "Stew"}) == {"id": 78}
+
+    [(path, headers, body, method)] = http.calls
+    assert (path, body, method) == ("/api/recipes/77", {"name": "Stew"}, "PUT")
+    assert headers["Authorization"] == f"Bearer {TOKEN}"
+
+
+def test_put_401_logs_in_once_and_resends_the_body(account: Path) -> None:
+    save(account, token=TOKEN)
+    http = FakeHttp(
+        {"/api/recipes/77": [http_error(401), {"id": 78}], LOGIN: [logged_in()]}
+    )
+
+    assert client(http).put("/api/recipes/77", {"name": "Stew"}) == {"id": 78}
+
+    assert http.paths == ["/api/recipes/77", LOGIN, "/api/recipes/77"]
+    assert [method for *_, method in http.calls] == ["PUT", "POST", "PUT"]
+    assert http.calls[2][1]["Authorization"] == f"Bearer {NEW_TOKEN}"
+    assert http.calls[2][2] == {"name": "Stew"}
 
 
 def test_delete_sends_a_delete_with_session_headers(account: Path) -> None:
@@ -183,9 +211,8 @@ def test_delete_sends_a_delete_with_session_headers(account: Path) -> None:
 
     client(http).delete("/api/recipes/77")
 
-    assert http.methods == ["DELETE"]
-    _, headers, body = http.calls[0]
-    assert body is None
+    [(path, headers, body, method)] = http.calls
+    assert (path, body, method) == ("/api/recipes/77", None, "DELETE")
     assert headers["Authorization"] == f"Bearer {TOKEN}"
 
 
@@ -196,7 +223,7 @@ def test_delete_401_logs_in_once_and_resends_the_delete(account: Path) -> None:
     client(http).delete("/api/recipes/77")
 
     assert http.paths == ["/api/recipes/77", LOGIN, "/api/recipes/77"]
-    assert http.methods == ["DELETE", None, "DELETE"]
+    assert [method for *_, method in http.calls] == ["DELETE", "POST", "DELETE"]
 
 
 def test_post_401_logs_in_once_and_resends_the_body(account: Path) -> None:

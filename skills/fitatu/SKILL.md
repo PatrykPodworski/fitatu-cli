@@ -1,11 +1,11 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating or deleting one — or wants to find a food in Fitatu, its ID, energy or measure.
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating, editing or deleting one — or wants to find a food in Fitatu, its ID, energy or measure.
 ---
 
 # fitatu
 
-`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, creates and deletes recipes, and prints plain text. Run it with Bash.
+`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, creates, edits and deletes recipes, and prints plain text. Run it with Bash.
 
 ## Commands
 
@@ -17,6 +17,7 @@ fitatu food search PHRASE --locale en_GB  # search the catalog in another locale
 fitatu recipe list                        # the user's recipes, most used first
 fitatu recipe view ID                     # one recipe: ingredients and nutrients per portion
 fitatu recipe create SPEC                 # create a recipe from the JSON file SPEC; prints its ID
+fitatu recipe edit ID SPEC                # change a recipe's fields given in SPEC; prints its ID
 fitatu recipe delete ID                   # delete one of the user's recipes
 fitatu auth login                         # the user runs this, never an agent (see Rules)
 ```
@@ -53,8 +54,9 @@ lines, a table of ingredients (`ingredient`, `quantity`, `measure`), then a
 `-` marks a missing value; a missing nutrient is 0. A recipe without ingredients
 prints `no ingredients`. Take the ID from `recipe list`, or from a diary item's `recipeId` in `day view --raw`.
 
-Editing a recipe in Fitatu gives it a new ID and marks the old one deleted. So an ID
-can drop out of `recipe list` after an edit, and `recipe view` of an old ID shows
+Editing a recipe's ingredients or their quantities in Fitatu gives it a new ID and
+marks the old one deleted; other edits keep the ID. So an ID can drop out of `recipe
+list` after an edit, and `recipe view` of an old ID shows
 `deleted: yes`: diary entries logged before the edit still point to that version.
 Run `recipe list` again for the current ID.
 
@@ -73,6 +75,14 @@ how many of that measure go in. Ingredients are products only: a recipe cannot
 contain another recipe. The command prints the new recipe's ID; check the result
 with `fitatu recipe view ID`. The recipe is private to the user.
 
+`fitatu recipe edit ID SPEC` takes a JSON file with any of the keys of a `recipe
+create` spec, checked the same way, for example `{"serving": 4}`. Each key given
+replaces that field; the others stay as they are. `items` replaces every ingredient,
+so list all of them, at least 2. The command prints the recipe's ID. A change to
+the ingredients or their quantities makes it a new ID, and `recipe view` of the old
+one then shows `deleted: yes`; other edits print the same ID. Use the printed ID
+either way. A deleted ID cannot be edited; take the current one from `recipe list`.
+
 `fitatu recipe delete ID` deletes one of the user's recipes and prints
 `deleted recipe <id>: <name>`. It asks no confirmation. Fitatu keeps the recipe
 marked deleted: it drops out of `recipe list`, `recipe view ID` shows `deleted: yes`,
@@ -84,11 +94,12 @@ and diary entries that use it still show it.
 from `food search`; an array of `{"id", "name", "uses"}` from `recipe list`;
 `{"id", "name", "servings", "deleted", "ingredients": [{"name", "quantity", "measure"}],
 "per_portion"}` from `recipe view`, with `quantity` a number or null; `{"id"}` from
-`recipe create`; `{"id", "name"}` from `recipe delete`. `--raw` prints the service's
-day plan as JSON instead, or an array of day plans from `day list`. With `food search`
-it prints the service's search response; with `recipe view`, the service's recipe;
-with `recipe create`, the service's response; with `recipe list`, the service's search
-rows for every recipe, deleted ones included, unsorted.
+`recipe create` and `recipe edit`; `{"id", "name"}` from `recipe delete`. `--raw`
+prints the service's day plan as JSON instead, or an array of day plans from `day
+list`. With `food search` it prints the service's search response; with `recipe
+view`, the service's recipe; with `recipe create` and `recipe edit`, the service's
+response; with `recipe list`, the service's search rows for every recipe, deleted
+ones included, unsorted.
 
 `fitatu <noun> <verb> --help` lists every flag.
 
@@ -98,6 +109,9 @@ rows for every recipe, deleted ones included, unsorted.
   they hold the user's login. Every command logs in on its own when it needs to.
 - `recipe create` changes the user's account. Run it only when the user asks for a
   new recipe, and confirm the name, servings and ingredients with them first.
+- `recipe edit` changes the user's account too. Run it only when the user asks to
+  change a recipe, and confirm the changes with them first. Use the ID it prints
+  for any later command.
 - `recipe delete` changes the user's account and cannot be undone from the CLI. Run
   it only when the user asks, and confirm the recipe's ID and name with them first.
 - Read the default text. Add `--json` only when a script parses the output.
@@ -116,6 +130,9 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
 
 - `Unexpected error` or `Fitatu sent a response fitatu-cli could not read` (exit 1): a
   bug in the CLI or a change in Fitatu's API. Show the full line to the user and stop.
+- `Recipe <id> is deleted` (exit 1): an edit of the ingredients or a delete retired
+  that ID. Run
+  `fitatu recipe list`, confirm the current recipe with the user, and retry with its ID.
 - `Fitatu has no recipe with ID <id>` (exit 1): the ID is wrong. Run `fitatu recipe
   list` and retry with an ID from it.
 - `Recipe <id> is already deleted` (exit 1): nothing to delete. Tell the user;
@@ -127,7 +144,8 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
   spec and retry once.
 - Any other exit 1, such as a rate limit or no network: tell the user the second
   sentence and wait for them.
-- Exit 2: bad arguments, or a `recipe create` spec that fails its checks. The
+- Exit 2: bad arguments, or a `recipe create` or `recipe edit` spec that fails its
+  checks. The
   message names the fix (`Did you mean 'view'?`); correct the call and retry once.
 
 ## Privacy

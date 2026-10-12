@@ -60,7 +60,9 @@ def serve(monkeypatch: pytest.MonkeyPatch, routes: dict[str, list[Any]]) -> Fake
 def test_http_get(monkeypatch: pytest.MonkeyPatch) -> None:
     urlopen = serve(monkeypatch, {"/a": [{"ok": 1}]})
 
-    assert client.http("https://example.com/a", {"API-Key": "k"}, None) == {"ok": 1}
+    assert client.http("https://example.com/a", {"API-Key": "k"}, None, "GET") == {
+        "ok": 1
+    }
 
     [(request, timeout)] = urlopen.requests
     assert request.get_method() == "GET"
@@ -73,7 +75,7 @@ def test_http_get(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_http_post_sends_json(monkeypatch: pytest.MonkeyPatch) -> None:
     urlopen = serve(monkeypatch, {"/a": [{"ok": 1}]})
 
-    client.http("https://example.com/a", {"API-Key": "k"}, {"x": 1})
+    client.http("https://example.com/a", {"API-Key": "k"}, {"x": 1}, "POST")
 
     [(request, _)] = urlopen.requests
     assert request.get_method() == "POST"
@@ -82,6 +84,17 @@ def test_http_post_sends_json(monkeypatch: pytest.MonkeyPatch) -> None:
         "Api-key": "k",
         "Content-type": "application/json",
     }
+
+
+def test_http_put_sends_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    urlopen = serve(monkeypatch, {"/a": [{"ok": 1}]})
+
+    client.http("https://example.com/a", {"API-Key": "k"}, {"x": 1}, "PUT")
+
+    [(request, _)] = urlopen.requests
+    assert request.get_method() == "PUT"
+    assert json.loads(request.data) == {"x": 1}  # type: ignore[arg-type]
+    assert request.get_header("Content-type") == "application/json"
 
 
 def test_http_delete_does_not_read_the_body(monkeypatch: pytest.MonkeyPatch) -> None:
