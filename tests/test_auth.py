@@ -310,3 +310,18 @@ def test_existing_session_file_is_made_private(account: Path) -> None:
     client(http).get(DAY)
 
     assert stat.S_IMODE(account.stat().st_mode) == 0o600
+
+
+def test_post_sends_the_body_and_retries_once_after_401(account: Path) -> None:
+    save(account, token=TOKEN)
+    days = "/api/diet-plan/101/days"
+    saved = [{"date": "2026-07-05", "revision": 3, "errorMessage": None}]
+    http = FakeHttp({days: [http_error(401), saved], LOGIN: [logged_in()]})
+
+    answer: object = client(http).post("/api/diet-plan/{uid}/days", {"day": 1})
+
+    assert answer == saved
+
+    assert http.paths == [days, LOGIN, days]
+    assert [http.calls[0][2], http.calls[2][2]] == [{"day": 1}, {"day": 1}]
+    assert http.calls[2][1]["Authorization"] == f"Bearer {NEW_TOKEN}"

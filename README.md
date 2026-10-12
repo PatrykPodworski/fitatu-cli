@@ -1,7 +1,7 @@
 # fitatu-cli
 
-`fitatu` reads your Fitatu food diary and searches Fitatu's foods. It prints plain
-text, or JSON with `--json`.
+`fitatu` reads your Fitatu food diary, searches Fitatu's foods, and puts foods into
+your diary. It prints plain text, or JSON with `--json`.
 
 **Unofficial.** This project is not affiliated with Fitatu. It uses the private API of
 the Fitatu web app, so it may break when Fitatu changes that API.
@@ -56,14 +56,15 @@ fitatu day view 2026-10-11
 
 ```text
 date: 2026-10-11
-meal       name          quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
-Breakfast  Oat porridge  1         bowl     320.0        54.2            11.0       6.5    7.1      3.4       0.1
-Lunch      Lentil soup   300       g        270.0        38.0            16.5       4.2    9.0      5.1       1.8
-total                                       590.0        92.2            27.5       10.7   16.1     8.5       1.9
+id                                    meal       name          quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+3f5e8a10-9a4b-11f1-8000-0b1c2d3e4f50  Breakfast  Oat porridge  1         bowl     320.0        54.2            11.0       6.5    7.1      3.4       0.1
+41c7d2e0-9a4b-11f1-8000-0b1c2d3e4f50  Lunch      Lentil soup   300       g        270.0        38.0            16.5       4.2    9.0      5.1       1.8
+total                                                                             590.0        92.2            27.5       10.7   16.1     8.5       1.9
 ```
 
 The first line is the date. A table of foods follows, one row per food, with a `total`
-row at the end. `-` marks a missing name, quantity or measure. A missing nutrient
+row at the end. The `id` column is the entry ID, which names one food on the day. `-`
+marks a missing ID, name, quantity or measure. A missing nutrient
 counts as 0. A day with nothing logged prints the date line and `no foods logged`.
 
 With `--json`, it prints the same data as JSON:
@@ -73,6 +74,7 @@ With `--json`, it prints the same data as JSON:
   "date": "2026-10-11",
   "foods": [
     {
+      "id": "3f5e8a10-9a4b-11f1-8000-0b1c2d3e4f50",
       "meal": "Breakfast",
       "name": "Oat porridge",
       "quantity": 1,
@@ -86,6 +88,7 @@ With `--json`, it prints the same data as JSON:
       "salt": 0.1
     },
     {
+      "id": "41c7d2e0-9a4b-11f1-8000-0b1c2d3e4f50",
       "meal": "Lunch",
       "name": "Lentil soup",
       "quantity": 300,
@@ -124,9 +127,9 @@ fitatu day list --from 2026-10-09 --to 2026-10-10
 
 ```text
 date: 2026-10-09
-meal       name          quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
-Breakfast  Oat porridge  1         bowl     320.0        54.2            11.0       6.5    7.1      3.4       0.1
-total                                       320.0        54.2            11.0       6.5    7.1      3.4       0.1
+id                                    meal       name          quantity  measure  energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+3f5e8a10-9a4b-11f1-8000-0b1c2d3e4f50  Breakfast  Oat porridge  1         bowl     320.0        54.2            11.0       6.5    7.1      3.4       0.1
+total                                                                             320.0        54.2            11.0       6.5    7.1      3.4       0.1
 
 date: 2026-10-10
 no foods logged
@@ -231,6 +234,32 @@ With `--json`, it prints `{"id", "name", "servings", "deleted", "ingredients",
 "per_portion"}`. Each ingredient is `{"name", "quantity", "measure"}`, and
 `per_portion` has the seven nutrients.
 
+### `fitatu entry create DATE MEAL (--product ID | --recipe ID) --quantity N [--measure ID]`
+
+Puts one product or recipe into a meal on a day, and prints the new entry ID.
+
+```sh
+fitatu entry create 2026-10-11 breakfast --product 501 --quantity 2 --measure 7
+fitatu entry create 2026-10-11 Lunch --recipe 100000002 --quantity 1
+```
+
+```text
+3f5e8a10-9a4b-11f1-8000-0b1c2d3e4f50
+```
+
+- `MEAL` is the meal's name as the app shows it, or its key: `breakfast`,
+  `second_breakfast`, `lunch`, `dinner` or `supper`. Case does not matter. A meal
+  name comes before a key, since you can rename meals in the app.
+- `--product` takes an ID from `fitatu food search`, and `--recipe` an ID from
+  `fitatu recipe list`.
+- `--quantity` counts the measure. A product needs `--measure`, a measure ID that
+  `fitatu food search` prints. A recipe defaults to measure 39, a portion.
+
+Each run adds a new entry; running it twice logs the food twice. `fitatu day view`
+shows the entry in its `id` column.
+
+With `--json`, it prints `{"id", "date", "meal"}`, where `meal` is the meal's name.
+
 ### `fitatu auth login`
 
 Logs in as `FITATU_EMAIL` with the Keychain password and prints the path of the saved
@@ -293,11 +322,12 @@ example `fitatu --debug day view`.
 | 1 | `Could not reach Fitatu (<reason>). Check your internet connection and try again.` |
 | 1 | `Fitatu sent a response fitatu-cli could not read. Fitatu may have changed its API; rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Fitatu has no recipe with ID <id>. Run 'fitatu recipe list' to see your recipes' IDs.` |
+| 1 | `Fitatu did not save the entry (<reason>). Check the food ID, the measure ID and the quantity.` |
 | 1 | `Unexpected error (<reason>). Rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
-| 2 | `No command given. Run 'fitatu <command>', one of: auth, day, food, recipe.` |
+| 2 | `No command given. Run 'fitatu <command>', one of: auth, day, entry, food, recipe.` |
 | 2 | `No command given. Run 'fitatu <noun> <command>', one of: <verbs>.` |
 | 2 | `Unknown command '<name>'. Did you mean '<command>'?` |
-| 2 | `Unknown command '<name>'. Run 'fitatu <command>', one of: auth, day, food, recipe.` |
+| 2 | `Unknown command '<name>'. Run 'fitatu <command>', one of: auth, day, entry, food, recipe.` |
 | 2 | `Unknown command '<name>'. Run 'fitatu <noun> <command>', one of: <verbs>.` |
 | 2 | `Unknown option '<option>' for 'fitatu <noun> <verb>'. Did you mean '<option>'? Run 'fitatu <noun> <verb> --help' for all options.` |
 | 2 | `Unexpected argument '<argument>' for 'fitatu <noun> <verb>'. Run 'fitatu <noun> <verb> --help' for all options.` |
@@ -306,6 +336,13 @@ example `fitatu --debug day view`.
 | 2 | `Option '<option>' takes no value. Remove '=<value>'.` |
 | 2 | `Invalid date '<value>'. Use today, yesterday or YYYY-MM-DD.` |
 | 2 | `Invalid recipe ID '<value>'. Give the number from 'fitatu recipe list'.` |
+| 2 | `Invalid product ID '<value>'. Give the number from 'fitatu food search'.` |
+| 2 | `Invalid measure ID '<value>'. Give the number from 'fitatu food search'.` |
+| 2 | `Invalid quantity '<value>'. Give a number greater than 0.` |
+| 2 | `One of the arguments --product --recipe is required. Run 'fitatu entry create --help'.` |
+| 2 | `Argument --recipe: not allowed with argument --product. Run 'fitatu entry create --help'.` |
+| 2 | `--product needs --measure. Give the measure ID from 'fitatu food search'.` |
+| 2 | `No meal '<meal>' on <date>. Use one of: <meals>.` |
 | 2 | `Missing --from for 'fitatu day list'. Run 'fitatu day list --help'.` |
 | 2 | `--from <date> is in the future. Give a --from on or before today.` |
 | 2 | `--to <date> is before --from <date>. Give a --to on or after --from.` |
@@ -326,6 +363,10 @@ Values in angle brackets are filled in from your input or the failure. The
   ([#34](https://github.com/PatrykPodworski/fitatu-cli/issues/34)). It identifies the
   web app, not a device: the web app ships it in its public bundle and every browser
   sends it. Fitatu rejects a login with a UUID it does not know.
+- `fitatu entry create` sends only the new item, as the web app does, so the day's
+  other entries stay as they are. Fitatu adds or updates an item by its entry ID. The
+  entry ID is a UUID v1, like the web app's, built from random bits instead of your
+  machine's network address.
 - Day totals are the sums of the nutrients Fitatu sends for each item. Recipe items
   are not rescaled, because Fitatu already sends their nutrients for the portion eaten.
   The totals match the day total in the app

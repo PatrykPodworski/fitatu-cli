@@ -33,3 +33,8 @@ def add_range_arguments(parser: argparse.ArgumentParser, default: date | None) -
         parser.add_argument(
             flag, dest=dest, metavar="DATE", default=default, type=parse_date, help=help
         )
+
+
+def timestamp(moment: datetime) -> str:
+    """Local time as Fitatu's diary writes take it."""
+    return f"{moment:%Y-%m-%d %H:%M:%S}"
