@@ -24,6 +24,9 @@ def http(url: str, headers: dict[str, str], body: Json | None, method: str) -> J
     )
     try:
         with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310
+            if method == "DELETE":
+                # The body of Fitatu's answer to a delete is undocumented.
+                return {}
             return cast(Json, json.load(response))
     except HTTPError as error:
         if error.code == 429:
@@ -55,6 +58,8 @@ class Client(Protocol):
 
     def put(self, path: str, body: Json) -> Json: ...
 
+    def delete(self, path: str) -> None: ...
+
 
 class FitatuClient:
     def __init__(
@@ -74,6 +79,9 @@ class FitatuClient:
 
     def put(self, path: str, body: Json) -> Json:
         return self.send("PUT", path, body)
+
+    def delete(self, path: str) -> None:
+        self.send("DELETE", path, None)
 
     def send(self, method: str, path: str, body: Json | None) -> Json:
         """Sends a `method` request to an API path, with `{uid}` replaced by the

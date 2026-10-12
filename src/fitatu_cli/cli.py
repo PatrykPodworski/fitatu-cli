@@ -11,7 +11,16 @@ import sys
 from collections.abc import Mapping
 from typing import Any, NoReturn, cast
 
-from fitatu_cli import client, day, food, login, recipe, recipe_create, recipe_edit
+from fitatu_cli import (
+    client,
+    day,
+    food,
+    login,
+    recipe,
+    recipe_create,
+    recipe_delete,
+    recipe_edit,
+)
 from fitatu_cli.client import Connect
 from fitatu_cli.errors import ISSUES, FitatuCliError, reason
 
@@ -149,6 +158,7 @@ def build_parser() -> CliParser:
     recipes = recipe.register(subparsers)
     recipe_create.register(recipes)
     recipe_edit.register(recipes)
+    recipe_delete.register(recipes)
     parser.add_json_option()
     parser.name_commands()
     return parser

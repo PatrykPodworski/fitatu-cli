@@ -97,6 +97,16 @@ def test_http_put_sends_json(monkeypatch: pytest.MonkeyPatch) -> None:
     assert request.get_header("Content-type") == "application/json"
 
 
+def test_http_delete_does_not_read_the_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    urlopen = serve(monkeypatch, {"/a": [b""]})
+
+    assert client.http("https://example.com/a", {"API-Key": "k"}, None, "DELETE") == {}
+
+    [(request, _)] = urlopen.requests
+    assert request.get_method() == "DELETE"
+    assert request.data is None
+
+
 def test_connect_returns_fitatu_client() -> None:
     connected = client.connect()
 

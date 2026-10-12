@@ -1,11 +1,11 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating or editing a recipe — or wants to find a food in Fitatu, its ID, energy or measure.
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating, editing or deleting one — or wants to find a food in Fitatu, its ID, energy or measure.
 ---
 
 # fitatu
 
-`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, creates and edits recipes, and prints plain text. Run it with Bash.
+`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, creates, edits and deletes recipes, and prints plain text. Run it with Bash.
 
 ## Commands
 
@@ -18,6 +18,7 @@ fitatu recipe list                        # the user's recipes, most used first
 fitatu recipe view ID                     # one recipe: ingredients and nutrients per portion
 fitatu recipe create SPEC                 # create a recipe from the JSON file SPEC; prints its ID
 fitatu recipe edit ID SPEC                # change a recipe's fields given in SPEC; prints its ID
+fitatu recipe delete ID                   # delete one of the user's recipes
 fitatu auth login                         # the user runs this, never an agent (see Rules)
 ```
 
@@ -82,17 +83,23 @@ the ingredients or their quantities makes it a new ID, and `recipe view` of the 
 one then shows `deleted: yes`; other edits print the same ID. Use the printed ID
 either way. A deleted ID cannot be edited; take the current one from `recipe list`.
 
+`fitatu recipe delete ID` deletes one of the user's recipes and prints
+`deleted recipe <id>: <name>`. It asks no confirmation. Fitatu keeps the recipe
+marked deleted: it drops out of `recipe list`, `recipe view ID` shows `deleted: yes`,
+and diary entries that use it still show it.
+
 `--json` prints the same data as JSON: `{"date", "foods", "totals"}` from
 `day view`, an array of those from `day list`; an array of
 `{"id", "type", "name", "brand", "energy", "measure": {"id", "name", "grams"}}`
 from `food search`; an array of `{"id", "name", "uses"}` from `recipe list`;
 `{"id", "name", "servings", "deleted", "ingredients": [{"name", "quantity", "measure"}],
 "per_portion"}` from `recipe view`, with `quantity` a number or null; `{"id"}` from
-`recipe create` and `recipe edit`. `--raw` prints the service's day plan as JSON
-instead, or an array of day plans from `day list`. With `food search` it prints the
-service's search response; with `recipe view`, the service's recipe; with `recipe
-create` and `recipe edit`, the service's response; with `recipe list`, the service's
-search rows for every recipe, deleted ones included, unsorted.
+`recipe create` and `recipe edit`; `{"id", "name"}` from `recipe delete`. `--raw`
+prints the service's day plan as JSON instead, or an array of day plans from `day
+list`. With `food search` it prints the service's search response; with `recipe
+view`, the service's recipe; with `recipe create` and `recipe edit`, the service's
+response; with `recipe list`, the service's search rows for every recipe, deleted
+ones included, unsorted.
 
 `fitatu <noun> <verb> --help` lists every flag.
 
@@ -105,6 +112,8 @@ search rows for every recipe, deleted ones included, unsorted.
 - `recipe edit` changes the user's account too. Run it only when the user asks to
   change a recipe, and confirm the changes with them first. Use the ID it prints
   for any later command.
+- `recipe delete` changes the user's account and cannot be undone from the CLI. Run
+  it only when the user asks, and confirm the recipe's ID and name with them first.
 - Read the default text. Add `--json` only when a script parses the output.
 - Start with the summary. Add `--raw` only when the field you need is missing from it:
   raw output is the full service response, many times larger.
@@ -126,6 +135,10 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
   `fitatu recipe list`, confirm the current recipe with the user, and retry with its ID.
 - `Fitatu has no recipe with ID <id>` (exit 1): the ID is wrong. Run `fitatu recipe
   list` and retry with an ID from it.
+- `Recipe <id> is already deleted` (exit 1): nothing to delete. Tell the user;
+  `fitatu recipe list` shows the recipes they still have.
+- `Fitatu did not delete recipe <id>` (exit 1): the recipe is not the user's. Run
+  `fitatu recipe list` and check the ID with the user.
 - `Fitatu rejected the recipe` (exit 1): an `itemId` or `measureId` in the spec is
   wrong, or an item is a recipe. Check each against `fitatu food search`, fix the
   spec and retry once.
