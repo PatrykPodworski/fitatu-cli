@@ -41,7 +41,10 @@ CURRENT: Json = {
         },
     ],
 }
-UPDATED = {"id": 78, "name": "Soup", "energy": 270.17, "protein": 15}
+# Fitatu keeps the ID on an edit that leaves the ingredients as they are, and gives
+# a new one when they change.
+UPDATED = {"id": 77, "name": "Soup", "energy": 270.17, "protein": 15}
+REPLACED = {"id": 78, "name": "Stew", "energy": 180.4, "protein": 9}
 # The full body for CURRENT, with the fields the web app sends back unchanged.
 BODY = {
     "name": "Stew",
@@ -76,7 +79,7 @@ def test_recipe_edit_puts_the_full_recipe_with_the_new_name(
         ["recipe", "edit", "77", write(tmp_path, {"name": "Soup"})], client, capsys
     )
 
-    assert out == "78\n"
+    assert out == "77\n"
     assert client.calls == [
         ("get", ("/api/recipes/77",), {}),
         ("put", ("/api/recipes/77", BODY | {"name": "Soup"}), {}),
@@ -86,7 +89,7 @@ def test_recipe_edit_puts_the_full_recipe_with_the_new_name(
 def test_recipe_edit_replaces_servings_description_and_every_ingredient(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    client = FakeClient(get=CURRENT, put=UPDATED)
+    client = FakeClient(get=CURRENT, put=REPLACED)
     spec = {
         "serving": 3,
         "description": None,
@@ -96,8 +99,9 @@ def test_recipe_edit_replaces_servings_description_and_every_ingredient(
         ],
     }
 
-    run_text(["recipe", "edit", "77", write(tmp_path, spec)], client, capsys)
+    out = run_text(["recipe", "edit", "77", write(tmp_path, spec)], client, capsys)
 
+    assert out == "78\n"
     [_, (_, (_, body), _)] = client.calls
     assert body == BODY | {
         "serving": "3",
@@ -116,7 +120,7 @@ def test_recipe_edit_json(tmp_path: Path, capsys: pytest.CaptureFixture[str]) ->
         capsys,
     )
 
-    assert out == {"id": 78}
+    assert out == {"id": 77}
 
 
 def test_recipe_edit_raw_prints_the_response_unchanged(
@@ -157,7 +161,8 @@ def test_recipe_edit_refuses_a_deleted_recipe(
     client = FakeClient(get=CURRENT | {"deleted": True}, put=UPDATED)
 
     assert run_failing(client, tmp_path, capsys) == (
-        "fitatu: Recipe 77 is deleted. An edit gives a recipe a new ID; "
+        "fitatu: Recipe 77 is deleted. An edit of its ingredients gives a recipe a "
+        "new ID; "
         "run 'fitatu recipe list' for its current ID.\n"
     )
     assert [name for name, _, _ in client.calls] == ["get"]
@@ -325,9 +330,10 @@ def test_recipe_edit_help_shows_the_spec_shape(
         "usage: fitatu recipe edit [-h] [--raw] [--json] ID SPEC "
         "Edit recipe ID with SPEC, a JSON file with any of the keys of a 'fitatu "
         'recipe create\' spec: "name", "serving", "description" and "items". Each '
-        'key given replaces that field; "items" replaces every ingredient. Fitatu '
-        "saves the edit under a new ID, which the command prints; the old ID reads "
-        "deleted. "
+        'key given replaces that field; "items" replaces every ingredient. '
+        "Prints the recipe's ID: an edit of the ingredients or their quantities "
+        "gives the recipe a new ID and marks the old one deleted; other edits keep "
+        "the ID. "
     )
     assert (
         " positional arguments: ID the recipe's ID SPEC the changes' JSON file "

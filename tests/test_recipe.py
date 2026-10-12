@@ -285,7 +285,7 @@ def test_help_lists_recipe_and_its_verbs(capsys: pytest.CaptureFixture[str]) -> 
         " list list your recipes, most used first "
         "view view one recipe: ingredients and nutrients per portion "
         "create create a recipe from a JSON spec and print its ID "
-        "edit edit a recipe from a JSON spec and print its new ID"
+        "edit edit a recipe from a JSON spec and print its ID"
     ) in help_text
 
 

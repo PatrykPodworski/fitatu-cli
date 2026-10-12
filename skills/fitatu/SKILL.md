@@ -17,7 +17,7 @@ fitatu food search PHRASE --locale en_GB  # search the catalog in another locale
 fitatu recipe list                        # the user's recipes, most used first
 fitatu recipe view ID                     # one recipe: ingredients and nutrients per portion
 fitatu recipe create SPEC                 # create a recipe from the JSON file SPEC; prints its ID
-fitatu recipe edit ID SPEC                # change a recipe's fields given in SPEC; prints its new ID
+fitatu recipe edit ID SPEC                # change a recipe's fields given in SPEC; prints its ID
 fitatu auth login                         # the user runs this, never an agent (see Rules)
 ```
 
@@ -53,8 +53,9 @@ lines, a table of ingredients (`ingredient`, `quantity`, `measure`), then a
 `-` marks a missing value; a missing nutrient is 0. A recipe without ingredients
 prints `no ingredients`. Take the ID from `recipe list`, or from a diary item's `recipeId` in `day view --raw`.
 
-Editing a recipe in Fitatu gives it a new ID and marks the old one deleted. So an ID
-can drop out of `recipe list` after an edit, and `recipe view` of an old ID shows
+Editing a recipe's ingredients or their quantities in Fitatu gives it a new ID and
+marks the old one deleted; other edits keep the ID. So an ID can drop out of `recipe
+list` after an edit, and `recipe view` of an old ID shows
 `deleted: yes`: diary entries logged before the edit still point to that version.
 Run `recipe list` again for the current ID.
 
@@ -76,16 +77,17 @@ with `fitatu recipe view ID`. The recipe is private to the user.
 `fitatu recipe edit ID SPEC` takes a JSON file with any of the keys of a `recipe
 create` spec, checked the same way, for example `{"serving": 4}`. Each key given
 replaces that field; the others stay as they are. `items` replaces every ingredient,
-so list all of them, at least 2. The command prints the recipe's new ID: from then
-on `recipe view` of the old ID shows `deleted: yes`. A deleted ID cannot be edited;
-take the current one from `recipe list`.
+so list all of them, at least 2. The command prints the recipe's ID. A change to
+the ingredients or their quantities makes it a new ID, and `recipe view` of the old
+one then shows `deleted: yes`; other edits print the same ID. Use the printed ID
+either way. A deleted ID cannot be edited; take the current one from `recipe list`.
 
 `--json` prints the same data as JSON: `{"date", "foods", "totals"}` from
 `day view`, an array of those from `day list`; an array of
 `{"id", "type", "name", "brand", "energy", "measure": {"id", "name", "grams"}}`
 from `food search`; an array of `{"id", "name", "uses"}` from `recipe list`;
 `{"id", "name", "servings", "deleted", "ingredients", "per_portion"}` from
-`recipe view`; `{"id"}` from `recipe create` and `recipe edit`, the new ID. `--raw` prints the service's day
+`recipe view`; `{"id"}` from `recipe create` and `recipe edit`. `--raw` prints the service's day
 plan as JSON instead, or an array of day plans from `day list`. With `food search`
 it prints the service's search response; with `recipe view`, the service's recipe;
 with `recipe create` and `recipe edit`, the service's response; with `recipe list`, the service's
@@ -100,7 +102,7 @@ search rows for every recipe, deleted ones included, unsorted.
 - `recipe create` changes the user's account. Run it only when the user asks for a
   new recipe, and confirm the name, servings and ingredients with them first.
 - `recipe edit` changes the user's account too. Run it only when the user asks to
-  change a recipe, and confirm the changes with them first. Use the new ID it prints
+  change a recipe, and confirm the changes with them first. Use the ID it prints
   for any later command.
 - Read the default text. Add `--json` only when a script parses the output.
 - Start with the summary. Add `--raw` only when the field you need is missing from it:
@@ -118,7 +120,8 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
 
 - `Unexpected error` or `Fitatu sent a response fitatu-cli could not read` (exit 1): a
   bug in the CLI or a change in Fitatu's API. Show the full line to the user and stop.
-- `Recipe <id> is deleted` (exit 1): an edit or a delete retired that ID. Run
+- `Recipe <id> is deleted` (exit 1): an edit of the ingredients or a delete retired
+  that ID. Run
   `fitatu recipe list`, confirm the current recipe with the user, and retry with its ID.
 - `Fitatu has no recipe with ID <id>` (exit 1): the ID is wrong. Run `fitatu recipe
   list` and retry with an ID from it.

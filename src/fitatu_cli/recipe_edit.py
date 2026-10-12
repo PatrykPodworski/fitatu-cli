@@ -1,7 +1,7 @@
 """Editing a recipe from a JSON spec of the fields to change. Fitatu has no partial
 update: the command reads the recipe and sends it back whole, with the spec's
-fields applied. Fitatu saves the result under a new ID and marks the old one
-deleted."""
+fields applied. When the ingredients or their quantities change, Fitatu saves the
+result under a new ID and marks the old one deleted; other edits keep the ID."""
 
 import argparse
 from typing import Any
@@ -60,7 +60,7 @@ def edit_recipe(args: argparse.Namespace, connect: Connect) -> Json:
     if recipe.get("deleted"):
         raise FitatuCliError(
             f"Recipe {args.id} is deleted.",
-            "An edit gives a recipe a new ID; "
+            "An edit of its ingredients gives a recipe a new ID; "
             "run 'fitatu recipe list' for its current ID.",
         )
     fields = spec_fields(args.spec)
@@ -73,13 +73,14 @@ def edit_recipe(args: argparse.Namespace, connect: Connect) -> Json:
 def register(verbs: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
     edit = verbs.add_parser(
         "edit",
-        help="edit a recipe from a JSON spec and print its new ID",
+        help="edit a recipe from a JSON spec and print its ID",
         description=(
             "Edit recipe ID with SPEC, a JSON file with any of the keys of a "
             '\'fitatu recipe create\' spec: "name", "serving", "description" '
             'and "items". Each key given replaces that field; "items" replaces '
-            "every ingredient. Fitatu saves the edit under a new ID, which the "
-            "command prints; the old ID reads deleted."
+            "every ingredient. Prints the recipe's ID: an edit of the ingredients "
+            "or their quantities gives the recipe a new ID and marks the old one "
+            "deleted; other edits keep the ID."
         ),
     )
     edit.add_argument("id", metavar="ID", type=recipe_id, help="the recipe's ID")
