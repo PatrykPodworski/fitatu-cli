@@ -1,6 +1,6 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — or wants to find a food in Fitatu, its ID, energy or measures.
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — or wants to find a food in Fitatu, its ID, energy or measure.
 ---
 
 # fitatu
@@ -29,13 +29,13 @@ period into several calls.
 
 `fitatu food search` searches Fitatu's catalog in the account's search language and
 prints a table with one row per food: `id`, `type` (`product` or `recipe`), `name`,
-`brand`, `energy_kcal`, and `measures`, each as `<measure id> <name> (<grams> g)`,
-joined by `, `. Quote a multi-word phrase. `-` marks a missing value or a food
-without measures. No match prints `no foods found` and exits 0.
+`brand`, `energy_kcal`, and `measure`, the one measure the search returns with the
+food, as `<measure id> <name> (<grams> g)`. Quote a multi-word phrase. `-` marks a
+missing value or a food without a measure. No match prints `no foods found` and exits 0.
 
 `--json` prints the same data as JSON: `{"date", "foods", "totals"}` from
 `day view`, an array of those from `day list`, and an array of
-`{"id", "type", "name", "brand", "energy", "measures": [{"id", "name", "grams"}]}`
+`{"id", "type", "name", "brand", "energy", "measure": {"id", "name", "grams"}}`
 from `food search`. `--raw` prints the service's response as JSON instead: the day
 plan, an array of day plans from `day list`, or the search response from
 `food search`.

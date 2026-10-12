@@ -139,20 +139,20 @@ prints.
 
 Finds foods matching `PHRASE` in Fitatu's catalog, in your account's search language.
 Without a phrase, it lists the foods you used last. Each row gives the food's ID, its
-type (`product` or `recipe`), name, brand, energy, and measures: each measure's ID,
-name and weight in grams.
+type (`product` or `recipe`), name, brand, energy, and the one measure Fitatu's search
+returns with it: the measure's ID, name and weight in grams.
 
 ```sh
 fitatu food search "rye bread"
 ```
 
 ```text
-id    type     name       brand   energy_kcal  measures
-501   product  Rye bread  Bakery  240.3        1 gram (1 g), 7 slice (32.5 g)
+id    type     name       brand   energy_kcal  measure
+501   product  Rye bread  Bakery  240.3        7 slice (32.5 g)
 9001  recipe   Stew       -       410.0        39 portion (350 g)
 ```
 
-`-` marks a missing value or a food without measures. No match prints
+`-` marks a missing value or a food without a measure. No match prints
 `no foods found`.
 
 With `--json`, it prints a JSON array:
@@ -165,10 +165,7 @@ With `--json`, it prints a JSON array:
     "name": "Rye bread",
     "brand": "Bakery",
     "energy": 240.3,
-    "measures": [
-      {"id": 1, "name": "gram", "grams": 1},
-      {"id": 7, "name": "slice", "grams": 32.5}
-    ]
+    "measure": {"id": 7, "name": "slice", "grams": 32.5}
   }
 ]
 ```

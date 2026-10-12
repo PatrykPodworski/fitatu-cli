@@ -32,10 +32,13 @@ BREAD: Json = {
     "name": "Rye bread",
     "brand": "Bakery",
     "energy": 240.33333,
-    "simpleMeasures": [
-        {"id": 1, "name": "gram", "weight": 1},
-        {"id": 7, "name": "slice", "weight": 32.5},
-    ],
+    "measure": {
+        "measureId": 7,
+        "measureName": "slice",
+        "measureQuantity": 1,
+        "measureWeight": 32.5,
+    },
+    "items": [],
 }
 STEW: Json = {
     "foodId": 9001,
@@ -43,7 +46,12 @@ STEW: Json = {
     "name": "Stew",
     "brand": None,
     "energy": 410,
-    "simpleMeasures": [{"id": 39, "name": "portion", "weight": 350}],
+    "measure": {
+        "measureId": 39,
+        "measureName": "portion",
+        "measureQuantity": 1,
+        "measureWeight": 350,
+    },
 }
 BREAD_ROW = {
     "id": 501,
@@ -51,10 +59,7 @@ BREAD_ROW = {
     "name": "Rye bread",
     "brand": "Bakery",
     "energy": 240.3,
-    "measures": [
-        {"id": 1, "name": "gram", "grams": 1},
-        {"id": 7, "name": "slice", "grams": 32.5},
-    ],
+    "measure": {"id": 7, "name": "slice", "grams": 32.5},
 }
 STEW_ROW = {
     "id": 9001,
@@ -62,7 +67,7 @@ STEW_ROW = {
     "name": "Stew",
     "brand": None,
     "energy": 410,
-    "measures": [{"id": 39, "name": "portion", "grams": 350}],
+    "measure": {"id": 39, "name": "portion", "grams": 350},
 }
 
 
@@ -113,10 +118,10 @@ def test_phrase_is_url_encoded(capsys: pytest.CaptureFixture[str]) -> None:
     ]
 
 
-def test_missing_fields_are_null_and_no_measures_is_an_empty_list(
+def test_missing_fields_and_a_missing_measure_are_null(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    client = catalog({"foodId": 7, "simpleMeasures": None}, {"measures": [{}]})
+    client = catalog({"foodId": 7, "measure": None}, {"measure": {}})
 
     assert run_json(["food", "search", "rye bread", "--json"], client, capsys) == [
         {
@@ -125,7 +130,7 @@ def test_missing_fields_are_null_and_no_measures_is_an_empty_list(
             "name": None,
             "brand": None,
             "energy": None,
-            "measures": [],
+            "measure": None,
         },
         {
             "id": None,
@@ -133,7 +138,7 @@ def test_missing_fields_are_null_and_no_measures_is_an_empty_list(
             "name": None,
             "brand": None,
             "energy": None,
-            "measures": [{"id": None, "name": None, "grams": None}],
+            "measure": {"id": None, "name": None, "grams": None},
         },
     ]
 
@@ -142,20 +147,19 @@ def test_prints_a_table_of_foods(capsys: pytest.CaptureFixture[str]) -> None:
     out = run_text(["food", "search", "rye bread"], catalog(BREAD, STEW), capsys)
 
     assert out == (
-        "id    type     name       brand   energy_kcal  measures\n"
-        "501   product  Rye bread  Bakery  240.3        "
-        "1 gram (1 g), 7 slice (32.5 g)\n"
+        "id    type     name       brand   energy_kcal  measure\n"
+        "501   product  Rye bread  Bakery  240.3        7 slice (32.5 g)\n"
         "9001  recipe   Stew       -       410.0        39 portion (350 g)\n"
     )
 
 
-def test_prints_a_dash_for_missing_values_and_measures(
+def test_prints_a_dash_for_missing_values_and_a_missing_measure(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    client = catalog({"foodId": 7}, {"foodId": 8, "measures": [{}]})
+    client = catalog({"foodId": 7}, {"foodId": 8, "measure": {}})
 
     assert run_text(["food", "search", "rye bread"], client, capsys) == (
-        "id  type  name  brand  energy_kcal  measures\n"
+        "id  type  name  brand  energy_kcal  measure\n"
         "7   -     -     -      -            -\n"
         "8   -     -     -      -            - - (- g)\n"
     )

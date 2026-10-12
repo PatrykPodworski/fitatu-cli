@@ -13,7 +13,7 @@ CATALOG = (
     "&page=1&limit=40&"
 )
 LAST_USED = "/api/search/food/{uid}/last-used?page=1&limit=100"
-COLUMNS = ("id", "type", "name", "brand", "energy_kcal", "measures")
+COLUMNS = ("id", "type", "name", "brand", "energy_kcal", "measure")
 
 
 def search_locale(client: Client) -> str:
@@ -40,20 +40,20 @@ def search_response(client: Client, phrase: str | None) -> list[Json]:
 def food_row(item: Json) -> Json:
     food_type = item.get("type")
     energy = item.get("energy")
+    measure = item.get("measure")
     return {
         "id": item.get("foodId"),
         "type": food_type.lower() if isinstance(food_type, str) else None,
         "name": item.get("name"),
         "brand": item.get("brand"),
         "energy": energy if energy is None else round(energy, 1),
-        "measures": [
-            {
-                "id": measure.get("id"),
-                "name": measure.get("name"),
-                "grams": measure.get("weight"),
-            }
-            for measure in item.get("simpleMeasures") or item.get("measures") or []
-        ],
+        "measure": None
+        if measure is None
+        else {
+            "id": measure.get("measureId"),
+            "name": measure.get("measureName"),
+            "grams": measure.get("measureWeight"),
+        },
     }
 
 
@@ -72,20 +72,22 @@ def number(value: float | None, spec: str) -> str:
     return "-" if value is None else format(value, spec)
 
 
-def measure_text(measure: Json) -> str:
+def measure_text(measure: Json | None) -> str:
+    if measure is None:
+        return "-"
     grams = number(measure["grams"], "g")
     return f"{dash(measure['id'])} {dash(measure['name'])} ({grams} g)"
 
 
 def foods_text(foods: list[Json]) -> str:
-    """A table of the foods, one row each, with every measure in the last column."""
+    """A table of the foods, one row each, with the measure in the last column."""
     if not foods:
         return "no foods found"
     rows = [
         [
             *(dash(food[key]) for key in ("id", "type", "name", "brand")),
             number(food["energy"], ".1f"),
-            ", ".join(measure_text(measure) for measure in food["measures"]) or "-",
+            measure_text(food["measure"]),
         ]
         for food in foods
     ]
