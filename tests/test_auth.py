@@ -166,6 +166,30 @@ def test_401_logs_in_once_and_retries(account: Path) -> None:
     assert http.calls[2][1]["Authorization"] == f"Bearer {NEW_TOKEN}"
 
 
+def test_post_sends_the_body_with_session_headers(account: Path) -> None:
+    save(account, token=TOKEN)
+    http = FakeHttp({"/api/recipes": [{"id": 77}]})
+
+    assert client(http).post("/api/recipes", {"name": "Stew"}) == {"id": 77}
+
+    _, headers, body = http.calls[0]
+    assert body == {"name": "Stew"}
+    assert headers["Authorization"] == f"Bearer {TOKEN}"
+
+
+def test_post_401_logs_in_once_and_resends_the_body(account: Path) -> None:
+    save(account, token=TOKEN)
+    http = FakeHttp(
+        {"/api/recipes": [http_error(401), {"id": 77}], LOGIN: [logged_in()]}
+    )
+
+    assert client(http).post("/api/recipes", {"name": "Stew"}) == {"id": 77}
+
+    assert http.paths == ["/api/recipes", LOGIN, "/api/recipes"]
+    assert http.calls[2][1]["Authorization"] == f"Bearer {NEW_TOKEN}"
+    assert http.calls[2][2] == {"name": "Stew"}
+
+
 def test_401_after_fresh_login_fails(account: Path) -> None:
     save(account, token=TOKEN)
     http = FakeHttp({DAY_101: [http_error(401), http_error(401)], LOGIN: [logged_in()]})
@@ -310,18 +334,3 @@ def test_existing_session_file_is_made_private(account: Path) -> None:
     client(http).get(DAY)
 
     assert stat.S_IMODE(account.stat().st_mode) == 0o600
-
-
-def test_post_sends_the_body_and_retries_once_after_401(account: Path) -> None:
-    save(account, token=TOKEN)
-    days = "/api/diet-plan/101/days"
-    saved = [{"date": "2026-07-05", "revision": 3, "errorMessage": None}]
-    http = FakeHttp({days: [http_error(401), saved], LOGIN: [logged_in()]})
-
-    answer: object = client(http).post("/api/diet-plan/{uid}/days", {"day": 1})
-
-    assert answer == saved
-
-    assert http.paths == [days, LOGIN, days]
-    assert [http.calls[0][2], http.calls[2][2]] == [{"day": 1}, {"day": 1}]
-    assert http.calls[2][1]["Authorization"] == f"Bearer {NEW_TOKEN}"

@@ -11,8 +11,6 @@ from fitatu_cli.errors import FitatuCliError, unreadable
 
 Json = dict[str, Any]
 
-INGREDIENT_COLUMNS = ("name", "quantity", "measure")
-
 
 def recipe_rows(client: Client) -> list[Json]:
     """The search rows of your recipes, deleted ones included, in service order.
@@ -79,6 +77,17 @@ def read_recipe(client: Client, id: int) -> Json:
         ) from error
 
 
+def quantity(value: Any) -> float | None:
+    """An ingredient's measure quantity as a number. Fitatu sends it as a string,
+    like "1.00"."""
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        raise unreadable() from None
+
+
 def view_recipe(args: argparse.Namespace, connect: Connect) -> Json:
     recipe = read_recipe(connect(), args.id)
     if args.raw:
@@ -91,7 +100,7 @@ def view_recipe(args: argparse.Namespace, connect: Connect) -> Json:
         "ingredients": [
             {
                 "name": item.get("name"),
-                "quantity": item.get("measureQuantity"),
+                "quantity": quantity(item.get("measureQuantity")),
                 "measure": item.get("measureName"),
             }
             for item in recipe.get("items") or []
@@ -122,7 +131,11 @@ def recipe_text(recipe: Json) -> str:
             [
                 ["ingredient", "quantity", "measure"],
                 *(
-                    [dash(item[key]) for key in INGREDIENT_COLUMNS]
+                    [
+                        dash(item["name"]),
+                        "-" if item["quantity"] is None else f"{item['quantity']:g}",
+                        dash(item["measure"]),
+                    ]
                     for item in recipe["ingredients"]
                 ),
             ]
@@ -139,7 +152,10 @@ def recipe_text(recipe: Json) -> str:
     return f"{fields}\n\n{ingredients}\n\nper portion\n{nutrients}"
 
 
-def register(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+def register(
+    subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]",
+) -> "argparse._SubParsersAction[argparse.ArgumentParser]":
+    """Registers the read verbs and returns the group, for the write verbs."""
     verbs = subparsers.add_parser("recipe", help="your recipes").add_subparsers(
         required=True
     )
@@ -156,3 +172,4 @@ def register(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") 
     view.add_argument(
         "--raw", action="store_true", help="print the full service response"
     )
+    return verbs

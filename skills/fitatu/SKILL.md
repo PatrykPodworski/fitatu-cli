@@ -1,11 +1,11 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion — wants to find a food in Fitatu, its ID, energy or measure — or asks to log a food or a recipe in their diary.
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating a new recipe — wants to find a food in Fitatu, its ID, energy or measure — or asks to log a food or a recipe in their diary.
 ---
 
 # fitatu
 
-`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, puts foods into the diary, and prints plain text. Run it with Bash.
+`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, creates recipes, puts foods into the diary, and prints plain text. Run it with Bash.
 
 ## Commands
 
@@ -16,6 +16,7 @@ fitatu food search [PHRASE]               # foods matching PHRASE; without it, t
 fitatu food search PHRASE --locale en_GB  # search the catalog in another locale, here English
 fitatu recipe list                        # the user's recipes, most used first
 fitatu recipe view ID                     # one recipe: ingredients and nutrients per portion
+fitatu recipe create SPEC                 # create a recipe from the JSON file SPEC; prints its ID
 fitatu entry create DATE MEAL --product ID --quantity N --measure ID  # put a product into a meal; prints the entry ID
 fitatu entry create DATE MEAL --recipe ID --quantity N  # put N portions of a recipe into a meal
 fitatu auth login                         # the user runs this, never an agent (see Rules)
@@ -58,6 +59,21 @@ can drop out of `recipe list` after an edit, and `recipe view` of an old ID show
 `deleted: yes`: diary entries logged before the edit still point to that version.
 Run `recipe list` again for the current ID.
 
+`fitatu recipe create SPEC` reads a JSON file:
+
+```json
+{"name": "Stew", "serving": 2, "description": "Simmer.",
+ "items": [{"itemId": 501, "measureId": 1, "measureQuantity": 400},
+           {"itemId": 502, "measureId": 3, "measureQuantity": 1}]}
+```
+
+`serving` is the number of portions, a positive number. `description` is optional.
+`items` holds at least 2 ingredients. Take each `itemId` and `measureId` from the
+`id` and the measure id of a product in `fitatu food search`; `measureQuantity` is
+how many of that measure go in. Ingredients are products only: a recipe cannot
+contain another recipe. The command prints the new recipe's ID; check the result
+with `fitatu recipe view ID`. The recipe is private to the user.
+
 `fitatu entry create DATE MEAL` adds one food to a meal of a day and prints the new
 entry ID, the `id` that `day view` shows for it. MEAL is the meal's name as `day view`
 shows it, or its key (`breakfast`, `second_breakfast`, `lunch`, `dinner`, `supper`),
@@ -70,12 +86,14 @@ adds a new entry, so running it twice logs the food twice.
 `day view`, an array of those from `day list`; an array of
 `{"id", "type", "name", "brand", "energy", "measure": {"id", "name", "grams"}}`
 from `food search`; an array of `{"id", "name", "uses"}` from `recipe list`;
-`{"id", "name", "servings", "deleted", "ingredients", "per_portion"}` from
-`recipe view`; `{"id", "date", "meal"}` from `entry create`. Each `day view` food
-has its entry ID in `id`. `--raw` prints the service's day plan as JSON instead, or an array of
-day plans from `day list`. With `food search` it prints the service's search
-response; with `recipe view`, the service's recipe; with `recipe list`, the
-service's search rows for every recipe, deleted ones included, unsorted.
+`{"id", "name", "servings", "deleted", "ingredients": [{"name", "quantity", "measure"}],
+"per_portion"}` from `recipe view`, with `quantity` a number or null; `{"id"}` from
+`recipe create`; `{"id", "date", "meal"}` from `entry create`. Each `day view` food
+has its entry ID in `id`. `--raw` prints the service's day plan as JSON instead, or
+an array of day plans from `day list`. With `food search` it prints the service's
+search response; with `recipe view`, the service's recipe; with `recipe create`, the
+service's response; with `recipe list`, the service's search rows for every recipe,
+deleted ones included, unsorted.
 
 `fitatu <noun> <verb> --help` lists every flag.
 
@@ -83,6 +101,8 @@ service's search rows for every recipe, deleted ones included, unsorted.
 
 - Never run `fitatu auth login` and never read `~/.fitatu` or the file in `FITATU_SESSION`:
   they hold the user's login. Every command logs in on its own when it needs to.
+- `recipe create` changes the user's account. Run it only when the user asks for a
+  new recipe, and confirm the name, servings and ingredients with them first.
 - `entry create` changes the user's diary. Run it only when the user asks to log a
   food, and confirm the day, meal, food and quantity first when they are unclear.
 - Read the default text. Add `--json` only when a script parses the output.
@@ -103,13 +123,16 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
   bug in the CLI or a change in Fitatu's API. Show the full line to the user and stop.
 - `Fitatu has no recipe with ID <id>` (exit 1): the ID is wrong. Run `fitatu recipe
   list` and retry with an ID from it.
+- `Fitatu rejected the recipe` (exit 1): an `itemId` or `measureId` in the spec is
+  wrong, or an item is a recipe. Check each against `fitatu food search`, fix the
+  spec and retry once.
 - `Fitatu did not save the entry (<reason>)` (exit 1): Fitatu refused the food,
   measure or quantity. Check them with `food search` or `recipe view`, then retry once.
 - Any other exit 1, such as a rate limit or no network: tell the user the second
   sentence and wait for them.
-- Exit 2: bad arguments. The message names the fix (`Did you mean 'view'?`);
-  correct the call and retry once. `No meal '<meal>' on <date>` lists the day's
-  meals; retry with one of them.
+- Exit 2: bad arguments, or a `recipe create` spec that fails its checks. The
+  message names the fix (`Did you mean 'view'?`); correct the call and retry once.
+  `No meal '<meal>' on <date>` lists the day's meals; retry with one of them.
 
 ## Privacy
 

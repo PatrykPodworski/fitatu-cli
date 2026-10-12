@@ -72,12 +72,12 @@ class FitatuClient:
         """GETs an API path, with `{uid}` replaced by the user's ID, or POSTs
         `body` to it. A 401 gets one fresh login and retry."""
         try:
-            return self.request(path, body, auth.session(self.http, self.now))
+            return self.request(path, auth.session(self.http, self.now), body)
         except HTTPError as error:
             if error.code != 401:
                 raise
         try:
-            return self.request(path, body, auth.login(self.http))
+            return self.request(path, auth.login(self.http), body)
         except HTTPError as error:
             if error.code != 401:
                 raise
@@ -87,7 +87,7 @@ class FitatuClient:
             f"report it at {ISSUES}.",
         )
 
-    def request(self, path: str, body: Json | None, session: Json) -> Json:
+    def request(self, path: str, session: Json, body: Json | None) -> Json:
         url = auth.API_BASE + path.replace("{uid}", session["uid"])
         return self.http(url, auth.headers(session), body)
 
