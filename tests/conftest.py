@@ -68,10 +68,18 @@ class FakeHttp:
     def __init__(self, routes: dict[str, list[Any]]) -> None:
         self.routes = routes
         self.calls: list[tuple[str, dict[str, str], Json | None]] = []
+        self.methods: list[str | None] = []
 
-    def __call__(self, url: str, headers: dict[str, str], body: Json | None) -> Json:
+    def __call__(
+        self,
+        url: str,
+        headers: dict[str, str],
+        body: Json | None,
+        method: str | None = None,
+    ) -> Json:
         path = url.removeprefix("https://en-gb.fitatu.com")
         self.calls.append((path, headers, body))
+        self.methods.append(method)
         response = self.routes[path].pop(0)
         if isinstance(response, BaseException):
             raise response
