@@ -323,6 +323,7 @@ example `fitatu --debug day view`.
 | 1 | `Fitatu sent a response fitatu-cli could not read. Fitatu may have changed its API; rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Fitatu has no recipe with ID <id>. Run 'fitatu recipe list' to see your recipes' IDs.` |
 | 1 | `Fitatu did not save the entry (<reason>). Check the food ID, the measure ID and the quantity.` |
+| 1 | `Fitatu's answer did not arrive (<reason>), so the entry may be saved. Wait a minute and check 'fitatu day view <date>' before you run this again.` |
 | 1 | `Unexpected error (<reason>). Rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 2 | `No command given. Run 'fitatu <command>', one of: auth, day, entry, food, recipe.` |
 | 2 | `No command given. Run 'fitatu <noun> <command>', one of: <verbs>.` |
@@ -364,7 +365,9 @@ Values in angle brackets are filled in from your input or the failure. The
   web app, not a device: the web app ships it in its public bundle and every browser
   sends it. Fitatu rejects a login with a UUID it does not know.
 - `fitatu entry create` sends only the new item, as the web app does, so the day's
-  other entries stay as they are. Fitatu adds or updates an item by its entry ID. The
+  other entries stay as they are. Fitatu adds or updates an item by its entry ID. A
+  write also sets the day's note and tags to what it holds, so the command resends
+  them, and the toilet items, from the day it read. The
   entry ID is a UUID v1, like the web app's, built from random bits instead of your
   machine's network address.
 - Day totals are the sums of the nutrients Fitatu sends for each item. Recipe items

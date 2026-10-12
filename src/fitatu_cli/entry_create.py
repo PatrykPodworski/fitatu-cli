@@ -6,18 +6,21 @@ import secrets
 import uuid
 from collections.abc import Callable
 from datetime import date, datetime
+from http.client import IncompleteRead
 from typing import Any, NoReturn
+from urllib.error import HTTPError
 
 from fitatu_cli.client import Client, Connect
 from fitatu_cli.dates import parse_date, timestamp
 from fitatu_cli.day import read_plan
-from fitatu_cli.errors import FitatuCliError, unreadable
+from fitatu_cli.errors import FitatuCliError, reason, unreadable
 from fitatu_cli.recipe import read_recipe, recipe_id
 
 Json = dict[str, Any]
 
 PORTION = 39
 FROM_SEARCH = "Give the number from 'fitatu food search'."
+CHECK_ENTRY = "Check the food ID, the measure ID and the quantity."
 
 
 def product_id(value: str) -> int:
@@ -89,20 +92,31 @@ def food(args: argparse.Namespace, client: Client) -> Json:
     return {"ingredientsServing": recipe.get("serving"), "recipeId": args.recipe}
 
 
-def save_item(client: Client, day: date, key: str, item: Json) -> None:
-    """Writes one item into meal `key` of `day`. Fitatu upserts items by
-    `planDayDietItemId` and leaves the day's other items as they are."""
-    receipts: object = client.post(
-        "/api/diet-plan/{uid}/days",
-        {
-            f"{day:%Y-%m-%d}": {
-                "dietPlan": {key: {"items": [item]}},
-                "toiletItems": [],
-                "note": None,
-                "tagsIds": [],
-            }
-        },
-    )
+def save_item(client: Client, day: date, plan: Json, key: str, item: Json) -> None:
+    """Writes one item into meal `key` of `day`, whose read is `plan`. Fitatu
+    upserts items by `planDayDietItemId` and leaves the day's other items as they
+    are, but sets the note and tags to what the write holds, so the write resends
+    them, and the toilet items, from the read."""
+    tags = plan.get("tagsIds")
+    toilet = plan.get("toilet")
+    try:
+        receipts: object = client.post(
+            "/api/diet-plan/{uid}/days",
+            {
+                f"{day:%Y-%m-%d}": {
+                    "dietPlan": {key: {"items": [item]}},
+                    "toiletItems": toilet if isinstance(toilet, list) else [],
+                    "note": plan.get("note"),
+                    "tagsIds": tags if isinstance(tags, list) else [],
+                }
+            },
+        )
+    except HTTPError as error:
+        if not 400 <= error.code < 500:
+            raise
+        raise FitatuCliError(
+            f"Fitatu did not save the entry (HTTP {error.code}).", CHECK_ENTRY
+        ) from error
     if (
         not isinstance(receipts, list)
         or not receipts
@@ -113,7 +127,7 @@ def save_item(client: Client, day: date, key: str, item: Json) -> None:
         if receipt.get("errorMessage"):
             raise FitatuCliError(
                 f"Fitatu did not save the entry ({receipt['errorMessage']}).",
-                "Check the food ID, the measure ID and the quantity.",
+                CHECK_ENTRY,
             )
 
 
@@ -127,22 +141,35 @@ def create_entry(args: argparse.Namespace, connect: Connect) -> Json:
             )
         measure = PORTION
     client = connect()
-    key, meal = meal_key(args, read_plan(client, args.date))
+    plan = read_plan(client, args.date)
+    key, meal = meal_key(args, plan)
     entry_id = new_entry_id()
-    save_item(
-        client,
-        args.date,
-        key,
-        {
-            "planDayDietItemId": entry_id,
-            "foodType": "PRODUCT" if args.product is not None else "RECIPE",
-            "measureId": measure,
-            "measureQuantity": args.quantity,
-            **food(args, client),
-            "source": "API",
-            "updatedAt": timestamp(datetime.now()),
-        },
-    )
+    item = {
+        "planDayDietItemId": entry_id,
+        "foodType": "PRODUCT" if args.product is not None else "RECIPE",
+        "measureId": measure,
+        "measureQuantity": args.quantity,
+        **food(args, client),
+        "source": "API",
+        "updatedAt": timestamp(datetime.now()),
+    }
+    try:
+        save_item(client, args.date, plan, key, item)
+    except FitatuCliError as error:
+        # A connection lost after the request went out may still have saved the
+        # entry, and each run makes a new entry. An HTTPError, such as a 429, is
+        # an OSError too, but an answer.
+        cause = error.__cause__
+        if not isinstance(cause, OSError | IncompleteRead) or isinstance(
+            cause, HTTPError
+        ):
+            raise
+        raise FitatuCliError(
+            f"Fitatu's answer did not arrive ({reason(cause)}), so the "
+            "entry may be saved.",
+            f"Wait a minute and check 'fitatu day view {args.date:%Y-%m-%d}' "
+            "before you run this again.",
+        ) from error
     return {"id": entry_id, "date": f"{args.date:%Y-%m-%d}", "meal": meal}
 
 

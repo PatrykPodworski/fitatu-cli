@@ -1,5 +1,6 @@
 import secrets
 from datetime import datetime
+from http.client import IncompleteRead
 from typing import Any
 from uuid import UUID
 
@@ -8,6 +9,7 @@ from conftest import http_error, run_json, run_text
 
 from fitatu_cli import entry_create
 from fitatu_cli.cli import main
+from fitatu_cli.errors import FitatuCliError, reason
 
 Json = dict[str, Any]
 
@@ -26,8 +28,8 @@ PRODUCT = ["--product", "501", "--quantity", "1", "--measure", "7"]
 
 
 class DiaryClient:
-    """Answers `get(path)` with `gets[path]`, or raises it when it is an
-    exception, and `post` with `saved`; records the calls."""
+    """Answers `get(path)` with `gets[path]` and `post` with `saved`, or raises
+    either when it is an exception; records the calls."""
 
     def __init__(self, gets: dict[str, Any], saved: Any = SAVED) -> None:
         self.gets = gets
@@ -43,6 +45,8 @@ class DiaryClient:
 
     def post(self, path: str, body: Json) -> Any:
         self.calls.append(("post", path, body))
+        if isinstance(self.saved, BaseException):
+            raise self.saved
         return self.saved
 
 
@@ -123,6 +127,41 @@ def test_entry_create_posts_only_the_new_product_item(
     }
     assert out == f"{entry_id}\n"
     assert_new_entry_id(entry_id)
+
+
+def test_entry_create_resends_the_days_note_tags_and_toilet_items(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Fitatu sets the day's note and tags to what a write holds, so an empty
+    value would clear them."""
+    toilet = [{"id": "t-1", "time": "07:30"}]
+    plan = PLAN | {"note": "Rest day", "tagsIds": [3, 8], "toilet": toilet}
+    client: Any = DiaryClient({DAY: plan})
+
+    run_text(["entry", "create", "2026-07-05", "lunch", *PRODUCT], client, capsys)
+
+    _, body = posted(client)
+    day = body["2026-07-05"]
+    assert (day["note"], day["tagsIds"], day["toiletItems"]) == (
+        "Rest day",
+        [3, 8],
+        toilet,
+    )
+
+
+@pytest.mark.parametrize(
+    "fields", [{"note": None, "tagsIds": None, "toilet": None}, {"tagsIds": {}}]
+)
+def test_entry_create_sends_empty_values_for_missing_note_tags_and_toilet(
+    fields: Json, capsys: pytest.CaptureFixture[str]
+) -> None:
+    client: Any = DiaryClient({DAY: PLAN | fields})
+
+    run_text(["entry", "create", "2026-07-05", "lunch", *PRODUCT], client, capsys)
+
+    _, body = posted(client)
+    day = body["2026-07-05"]
+    assert (day["note"], day["tagsIds"], day["toiletItems"]) == (None, [], [])
 
 
 def test_entry_create_puts_a_recipe_in_portions_with_its_servings(
@@ -336,6 +375,69 @@ def test_entry_create_reports_an_error_message_from_fitatu(
         "fitatu: Fitatu did not save the entry (Invalid measure). "
         "Check the food ID, the measure ID and the quantity.\n"
     )
+
+
+@pytest.mark.parametrize("code", [400, 422])
+def test_entry_create_reports_a_refused_write(
+    code: int, capsys: pytest.CaptureFixture[str]
+) -> None:
+    client: Any = DiaryClient({DAY: PLAN}, http_error(code))
+
+    assert (
+        main(["entry", "create", "2026-07-05", "lunch", *PRODUCT], lambda: client) == 1
+    )
+    assert capsys.readouterr().err == (
+        f"fitatu: Fitatu did not save the entry (HTTP {code}). "
+        "Check the food ID, the measure ID and the quantity.\n"
+    )
+
+
+def test_entry_create_reports_a_server_error_as_unexpected(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client: Any = DiaryClient({DAY: PLAN}, http_error(500))
+
+    assert (
+        main(["entry", "create", "2026-07-05", "lunch", *PRODUCT], lambda: client) == 1
+    )
+    assert capsys.readouterr().err.startswith(
+        "fitatu: Unexpected error (HTTPError: HTTP Error 500: error)."
+    )
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [TimeoutError("The read operation timed out"), IncompleteRead(b"[", 10)],
+)
+def test_entry_create_without_an_answer_says_to_check_the_day_before_a_retry(
+    cause: Exception, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Fitatu may have saved the entry, and a second run logs the food twice."""
+    lost = FitatuCliError("Could not reach Fitatu.", "Try again.")
+    lost.__cause__ = cause
+    client: Any = DiaryClient({DAY: PLAN}, lost)
+
+    assert (
+        main(["entry", "create", "2026-07-05", "lunch", *PRODUCT], lambda: client) == 1
+    )
+    assert capsys.readouterr().err == (
+        f"fitatu: Fitatu's answer did not arrive ({reason(cause)}), so the entry "
+        "may be saved. Wait a minute and check 'fitatu day view 2026-07-05' "
+        "before you run this again.\n"
+    )
+
+
+def test_entry_create_passes_on_a_rate_limit(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    limited = FitatuCliError("Fitatu is rate-limiting.", "Wait.")
+    limited.__cause__ = http_error(429)
+    client: Any = DiaryClient({DAY: PLAN}, limited)
+
+    assert (
+        main(["entry", "create", "2026-07-05", "lunch", *PRODUCT], lambda: client) == 1
+    )
+    assert capsys.readouterr().err == "fitatu: Fitatu is rate-limiting. Wait.\n"
 
 
 @pytest.mark.parametrize("saved", [{"ok": True}, [], ["2026-07-05"]])

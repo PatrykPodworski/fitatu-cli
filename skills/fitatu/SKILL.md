@@ -128,6 +128,9 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
   spec and retry once.
 - `Fitatu did not save the entry (<reason>)` (exit 1): Fitatu refused the food,
   measure or quantity. Check them with `food search` or `recipe view`, then retry once.
+- `Fitatu's answer did not arrive ... the entry may be saved` (exit 1): do not run
+  `entry create` again yet. Wait a minute, run the `fitatu day view DATE` it names,
+  and create the entry only if it is not there.
 - Any other exit 1, such as a rate limit or no network: tell the user the second
   sentence and wait for them.
 - Exit 2: bad arguments, or a `recipe create` spec that fails its checks. The
