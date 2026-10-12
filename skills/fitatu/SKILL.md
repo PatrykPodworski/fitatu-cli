@@ -1,11 +1,11 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — or wants to find a food in Fitatu, its ID, energy or measure.
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion — or wants to find a food in Fitatu, its ID, energy or measure.
 ---
 
 # fitatu
 
-`fitatu` reads the user's Fitatu data, searches Fitatu's foods, and prints plain text. Run it with Bash.
+`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, and prints plain text. Run it with Bash.
 
 ## Commands
 
@@ -13,6 +13,8 @@ description: Use when the user asks about their Fitatu food diary — what they 
 fitatu day view [DATE]                    # one day's foods and totals; DATE: today | yesterday | YYYY-MM-DD, default today
 fitatu day list --from DATE [--to DATE]   # each day in the range, oldest first; --to defaults to today
 fitatu food search [PHRASE]               # foods matching PHRASE; without it, the foods the user used last
+fitatu recipe list                        # the user's recipes, most used first
+fitatu recipe view ID                     # one recipe: ingredients and nutrients per portion
 fitatu auth login                         # the user runs this, never an agent (see Rules)
 ```
 
@@ -33,12 +35,30 @@ prints a table with one row per food: `id`, `type` (`product` or `recipe`), `nam
 food, as `<measure id> <name> (<grams> g)`. Quote a multi-word phrase. `-` marks a
 missing value or a food without a measure. No match prints `no foods found` and exits 0.
 
+`fitatu recipe list` prints a table with the columns `id`, `uses` (how many times
+the user logged the recipe) and `name`, most used first. It hides deleted recipes.
+With no recipes it prints `no recipes`.
+
+`fitatu recipe view ID` prints `id:`, `name:`, `servings:` and `deleted: yes|no`
+lines, a table of ingredients (`ingredient`, `quantity`, `measure`), then a
+`per portion` line and a one-row table of the nutrients, named as in `day view`.
+`-` marks a missing value; a missing nutrient is 0. A recipe without ingredients
+prints `no ingredients`. Take the ID from `recipe list`, or from a diary item's `recipeId` in `day view --raw`.
+
+Editing a recipe in Fitatu gives it a new ID and marks the old one deleted. So an ID
+can drop out of `recipe list` after an edit, and `recipe view` of an old ID shows
+`deleted: yes`: diary entries logged before the edit still point to that version.
+Run `recipe list` again for the current ID.
+
 `--json` prints the same data as JSON: `{"date", "foods", "totals"}` from
-`day view`, an array of those from `day list`, and an array of
+`day view`, an array of those from `day list`; an array of
 `{"id", "type", "name", "brand", "energy", "measure": {"id", "name", "grams"}}`
-from `food search`. `--raw` prints the service's response as JSON instead: the day
-plan, an array of day plans from `day list`, or the search response from
-`food search`.
+from `food search`; an array of `{"id", "name", "uses"}` from `recipe list`;
+`{"id", "name", "servings", "deleted", "ingredients", "per_portion"}` from
+`recipe view`. `--raw` prints the service's day plan as JSON instead, or an array of
+day plans from `day list`. With `food search` it prints the service's search
+response; with `recipe view`, the service's recipe; with `recipe list`, the
+service's search rows for every recipe, deleted ones included, unsorted.
 
 `fitatu <noun> <verb> --help` lists every flag.
 
@@ -62,6 +82,8 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
 
 - `Unexpected error` or `Fitatu sent a response fitatu-cli could not read` (exit 1): a
   bug in the CLI or a change in Fitatu's API. Show the full line to the user and stop.
+- `Fitatu has no recipe with ID <id>` (exit 1): the ID is wrong. Run `fitatu recipe
+  list` and retry with an ID from it.
 - Any other exit 1, such as a rate limit or no network: tell the user the second
   sentence and wait for them.
 - Exit 2: bad arguments. The message names the fix (`Did you mean 'view'?`);

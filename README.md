@@ -170,6 +170,59 @@ With `--json`, it prints a JSON array:
 ]
 ```
 
+### `fitatu recipe list`
+
+Prints your recipes, most used first: the recipe ID, how many times you logged it, and
+its name. Deleted recipes are hidden. With no recipes, it prints `no recipes`.
+
+```sh
+fitatu recipe list
+```
+
+```text
+id         uses  name
+100000002  14    Lentil soup
+100000001  3     Oat porridge
+```
+
+With `--json`, it prints an array of `{"id", "name", "uses"}`.
+
+### `fitatu recipe view ID`
+
+Prints one recipe: its fields, a table of its ingredients, and its nutrients per
+portion.
+
+```sh
+fitatu recipe view 100000002
+```
+
+```text
+id: 100000002
+name: Lentil soup
+servings: 4
+deleted: no
+
+ingredient       quantity  measure
+Red lentils      200       g
+Carrot           2         piece
+Vegetable stock  1         l
+
+per portion
+energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+270.0        38.0            16.5       4.2    9.0      5.1       1.8
+```
+
+`-` marks a missing name, servings, quantity or measure. A missing nutrient counts as
+0. A recipe without ingredients prints `no ingredients`.
+
+Editing a recipe in Fitatu gives it a new ID and marks the old one deleted. `recipe
+view` still shows a deleted recipe, with `deleted: yes`, because diary entries logged
+before the edit point to it. `recipe list` shows only the latest version.
+
+With `--json`, it prints `{"id", "name", "servings", "deleted", "ingredients",
+"per_portion"}`. Each ingredient is `{"name", "quantity", "measure"}`, and
+`per_portion` has the seven nutrients.
+
 ### `fitatu auth login`
 
 Logs in as `FITATU_EMAIL` with the Keychain password and prints the path of the saved
@@ -205,6 +258,10 @@ do not have it, so a daily sodium sum is too low. Use `salt` instead.
 --raw` prints Fitatu's search response. Use it when you need a
 field the summary does not have. `--raw` prints JSON without `--json`.
 
+`fitatu recipe view --raw` prints Fitatu's response for the recipe unchanged.
+`fitatu recipe list --raw` prints Fitatu's search rows for your recipes, in the
+service's order, deleted recipes included.
+
 ## Output and exit codes
 
 Results are plain text on stdout, or JSON with `--json` or `--raw`, with exit code 0.
@@ -227,11 +284,12 @@ example `fitatu --debug day view`.
 | 1 | `Fitatu is rate-limiting requests from this machine. Wait a few minutes and try again.` |
 | 1 | `Could not reach Fitatu (<reason>). Check your internet connection and try again.` |
 | 1 | `Fitatu sent a response fitatu-cli could not read. Fitatu may have changed its API; rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
+| 1 | `Fitatu has no recipe with ID <id>. Run 'fitatu recipe list' to see your recipes' IDs.` |
 | 1 | `Unexpected error (<reason>). Rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
-| 2 | `No command given. Run 'fitatu <command>', one of: auth, day, food.` |
+| 2 | `No command given. Run 'fitatu <command>', one of: auth, day, food, recipe.` |
 | 2 | `No command given. Run 'fitatu <noun> <command>', one of: <verbs>.` |
 | 2 | `Unknown command '<name>'. Did you mean '<command>'?` |
-| 2 | `Unknown command '<name>'. Run 'fitatu <command>', one of: auth, day, food.` |
+| 2 | `Unknown command '<name>'. Run 'fitatu <command>', one of: auth, day, food, recipe.` |
 | 2 | `Unknown command '<name>'. Run 'fitatu <noun> <command>', one of: <verbs>.` |
 | 2 | `Unknown option '<option>' for 'fitatu <noun> <verb>'. Did you mean '<option>'? Run 'fitatu <noun> <verb> --help' for all options.` |
 | 2 | `Unexpected argument '<argument>' for 'fitatu <noun> <verb>'. Run 'fitatu <noun> <verb> --help' for all options.` |
@@ -239,6 +297,7 @@ example `fitatu --debug day view`.
 | 2 | `Option '<option>' needs a value. Run 'fitatu day list --help'.` |
 | 2 | `Option '<option>' takes no value. Remove '=<value>'.` |
 | 2 | `Invalid date '<value>'. Use today, yesterday or YYYY-MM-DD.` |
+| 2 | `Invalid recipe ID '<value>'. Give the number from 'fitatu recipe list'.` |
 | 2 | `Missing --from for 'fitatu day list'. Run 'fitatu day list --help'.` |
 | 2 | `--from <date> is in the future. Give a --from on or before today.` |
 | 2 | `--to <date> is before --from <date>. Give a --to on or after --from.` |
