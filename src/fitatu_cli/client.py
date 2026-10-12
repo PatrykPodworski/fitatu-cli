@@ -12,16 +12,23 @@ from fitatu_cli.errors import ISSUES, FitatuCliError, reason, unreadable
 Json = dict[str, Any]
 
 
-def http(url: str, headers: dict[str, str], body: Json | None) -> Json:
-    """GETs `url`, or POSTs `body` as JSON when given."""
+def http(
+    url: str, headers: dict[str, str], body: Json | None, method: str | None = None
+) -> Json:
+    """GETs `url`, or POSTs `body` as JSON when given, or sends `method`."""
     data = None
     if body is not None:
         data = json.dumps(body).encode()
         headers = headers | {"Content-Type": "application/json"}
     # The URL is always API_BASE plus a path from this package.
-    request = urllib.request.Request(url, data=data, headers=headers)  # noqa: S310
+    request = urllib.request.Request(  # noqa: S310
+        url, data=data, headers=headers, method=method
+    )
     try:
         with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310
+            if method == "DELETE":
+                # The body of Fitatu's answer to a delete is undocumented.
+                return {}
             return cast(Json, json.load(response))
     except HTTPError as error:
         if error.code == 429:
@@ -51,6 +58,8 @@ class Client(Protocol):
 
     def post(self, path: str, body: Json) -> Json: ...
 
+    def delete(self, path: str) -> None: ...
+
 
 class FitatuClient:
     def __init__(
@@ -68,16 +77,19 @@ class FitatuClient:
     def post(self, path: str, body: Json) -> Json:
         return self.send(path, body)
 
-    def send(self, path: str, body: Json | None) -> Json:
+    def delete(self, path: str) -> None:
+        self.send(path, None, "DELETE")
+
+    def send(self, path: str, body: Json | None, method: str | None = None) -> Json:
         """GETs an API path, with `{uid}` replaced by the user's ID, or POSTs
-        `body` to it. A 401 gets one fresh login and retry."""
+        `body` to it, or sends `method`. A 401 gets one fresh login and retry."""
         try:
-            return self.request(path, auth.session(self.http, self.now), body)
+            return self.request(path, auth.session(self.http, self.now), body, method)
         except HTTPError as error:
             if error.code != 401:
                 raise
         try:
-            return self.request(path, auth.login(self.http), body)
+            return self.request(path, auth.login(self.http), body, method)
         except HTTPError as error:
             if error.code != 401:
                 raise
@@ -87,9 +99,11 @@ class FitatuClient:
             f"report it at {ISSUES}.",
         )
 
-    def request(self, path: str, session: Json, body: Json | None) -> Json:
+    def request(
+        self, path: str, session: Json, body: Json | None, method: str | None
+    ) -> Json:
         url = auth.API_BASE + path.replace("{uid}", session["uid"])
-        return self.http(url, auth.headers(session), body)
+        return self.http(url, auth.headers(session), body, method)
 
 
 def connect() -> Client:

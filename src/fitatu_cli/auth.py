@@ -7,13 +7,23 @@ import os
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Protocol, cast
 from urllib.error import HTTPError
 
 from fitatu_cli.errors import FitatuCliError, unreadable
 
 Json = dict[str, Any]
-Http = Callable[[str, dict[str, str], Json | None], Json]
+
+
+class Http(Protocol):
+    def __call__(
+        self,
+        url: str,
+        headers: dict[str, str],
+        body: Json | None,
+        method: str | None = None,
+    ) -> Json: ...
+
 
 API_BASE = "https://en-gb.fitatu.com"
 # Fitatu's public web-client key: the web app ships it to every browser, and

@@ -177,6 +177,28 @@ def test_post_sends_the_body_with_session_headers(account: Path) -> None:
     assert headers["Authorization"] == f"Bearer {TOKEN}"
 
 
+def test_delete_sends_a_delete_with_session_headers(account: Path) -> None:
+    save(account, token=TOKEN)
+    http = FakeHttp({"/api/recipes/77": [{}]})
+
+    client(http).delete("/api/recipes/77")
+
+    assert http.methods == ["DELETE"]
+    _, headers, body = http.calls[0]
+    assert body is None
+    assert headers["Authorization"] == f"Bearer {TOKEN}"
+
+
+def test_delete_401_logs_in_once_and_resends_the_delete(account: Path) -> None:
+    save(account, token=TOKEN)
+    http = FakeHttp({"/api/recipes/77": [http_error(401), {}], LOGIN: [logged_in()]})
+
+    client(http).delete("/api/recipes/77")
+
+    assert http.paths == ["/api/recipes/77", LOGIN, "/api/recipes/77"]
+    assert http.methods == ["DELETE", None, "DELETE"]
+
+
 def test_post_401_logs_in_once_and_resends_the_body(account: Path) -> None:
     save(account, token=TOKEN)
     http = FakeHttp(
