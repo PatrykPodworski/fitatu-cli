@@ -1,17 +1,18 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — or about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion.
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion — or wants to find a food in Fitatu, its ID, energy or measure.
 ---
 
 # fitatu
 
-`fitatu` reads the user's Fitatu diary and recipes and prints plain text. Run it with Bash.
+`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, and prints plain text. Run it with Bash.
 
 ## Commands
 
 ```sh
 fitatu day view [DATE]                    # one day's foods and totals; DATE: today | yesterday | YYYY-MM-DD, default today
 fitatu day list --from DATE [--to DATE]   # each day in the range, oldest first; --to defaults to today
+fitatu food search [PHRASE]               # foods matching PHRASE; without it, the foods the user used last
 fitatu recipe list                        # the user's recipes, most used first
 fitatu recipe view ID                     # one recipe: ingredients and nutrients per portion
 fitatu auth login                         # the user runs this, never an agent (see Rules)
@@ -27,6 +28,12 @@ A day with nothing logged prints `no foods logged` under the date line and exits
 `fitatu day list` prints one such block per day, oldest first, with a blank line
 between blocks. A range covers at most 31 days, counting both ends; split a longer
 period into several calls.
+
+`fitatu food search` searches Fitatu's catalog in the account's search language and
+prints a table with one row per food: `id`, `type` (`product` or `recipe`), `name`,
+`brand`, `energy_kcal`, and `measure`, the one measure the search returns with the
+food, as `<measure id> <name> (<grams> g)`. Quote a multi-word phrase. `-` marks a
+missing value or a food without a measure. No match prints `no foods found` and exits 0.
 
 `fitatu recipe list` prints a table with the columns `id`, `uses` (how many times
 the user logged the recipe) and `name`, most used first. It hides deleted recipes.
@@ -44,12 +51,14 @@ can drop out of `recipe list` after an edit, and `recipe view` of an old ID show
 Run `recipe list` again for the current ID.
 
 `--json` prints the same data as JSON: `{"date", "foods", "totals"}` from
-`day view`, an array of those from `day list`; an array of `{"id", "name", "uses"}`
-from `recipe list`; `{"id", "name", "servings", "deleted", "ingredients",
-"per_portion"}` from `recipe view`. `--raw` prints the service's day plan as JSON
-instead, or an array of day plans from `day list`. With `recipe view` it prints the
-service's recipe; with `recipe list`, the service's search rows for every recipe,
-deleted ones included, unsorted.
+`day view`, an array of those from `day list`; an array of
+`{"id", "type", "name", "brand", "energy", "measure": {"id", "name", "grams"}}`
+from `food search`; an array of `{"id", "name", "uses"}` from `recipe list`;
+`{"id", "name", "servings", "deleted", "ingredients", "per_portion"}` from
+`recipe view`. `--raw` prints the service's day plan as JSON instead, or an array of
+day plans from `day list`. With `food search` it prints the service's search
+response; with `recipe view`, the service's recipe; with `recipe list`, the
+service's search rows for every recipe, deleted ones included, unsorted.
 
 `fitatu <noun> <verb> --help` lists every flag.
 

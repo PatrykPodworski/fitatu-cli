@@ -1,7 +1,7 @@
 # fitatu-cli
 
-`fitatu` reads your Fitatu food diary and prints it as plain text, or as JSON with
-`--json`.
+`fitatu` reads your Fitatu food diary and searches Fitatu's foods. It prints plain
+text, or JSON with `--json`.
 
 **Unofficial.** This project is not affiliated with Fitatu. It uses the private API of
 the Fitatu web app, so it may break when Fitatu changes that API.
@@ -135,6 +135,41 @@ no foods logged
 With `--json`, it prints a JSON array of the day objects `fitatu day view --json`
 prints.
 
+### `fitatu food search [PHRASE]`
+
+Finds foods matching `PHRASE` in Fitatu's catalog, in your account's search language.
+Without a phrase, it lists the foods you used last. Each row gives the food's ID, its
+type (`product` or `recipe`), name, brand, energy, and the one measure Fitatu's search
+returns with it: the measure's ID, name and weight in grams.
+
+```sh
+fitatu food search "rye bread"
+```
+
+```text
+id    type     name       brand   energy_kcal  measure
+501   product  Rye bread  Bakery  240.3        7 slice (32.5 g)
+9001  recipe   Stew       -       410.0        39 portion (350 g)
+```
+
+`-` marks a missing value or a food without a measure. No match prints
+`no foods found`.
+
+With `--json`, it prints a JSON array:
+
+```json
+[
+  {
+    "id": 501,
+    "type": "product",
+    "name": "Rye bread",
+    "brand": "Bakery",
+    "energy": 240.3,
+    "measure": {"id": 7, "name": "slice", "grams": 32.5}
+  }
+]
+```
+
 ### `fitatu recipe list`
 
 Prints your recipes, most used first: the recipe ID, how many times you logged it, and
@@ -219,7 +254,8 @@ do not have it, so a daily sodium sum is too low. Use `salt` instead.
 ## Raw output
 
 `fitatu day view --raw` prints Fitatu's response for the day unchanged, as JSON. With
-`fitatu day list --raw`, it prints an array of those responses. Use it when you need a
+`fitatu day list --raw`, it prints an array of those responses. `fitatu food search
+--raw` prints Fitatu's search response. Use it when you need a
 field the summary does not have. `--raw` prints JSON without `--json`.
 
 `fitatu recipe view --raw` prints Fitatu's response for the recipe unchanged.
@@ -250,10 +286,10 @@ example `fitatu --debug day view`.
 | 1 | `Fitatu sent a response fitatu-cli could not read. Fitatu may have changed its API; rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Fitatu has no recipe with ID <id>. Run 'fitatu recipe list' to see your recipes' IDs.` |
 | 1 | `Unexpected error (<reason>). Rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
-| 2 | `No command given. Run 'fitatu <command>', one of: auth, day, recipe.` |
+| 2 | `No command given. Run 'fitatu <command>', one of: auth, day, food, recipe.` |
 | 2 | `No command given. Run 'fitatu <noun> <command>', one of: <verbs>.` |
 | 2 | `Unknown command '<name>'. Did you mean '<command>'?` |
-| 2 | `Unknown command '<name>'. Run 'fitatu <command>', one of: auth, day, recipe.` |
+| 2 | `Unknown command '<name>'. Run 'fitatu <command>', one of: auth, day, food, recipe.` |
 | 2 | `Unknown command '<name>'. Run 'fitatu <noun> <command>', one of: <verbs>.` |
 | 2 | `Unknown option '<option>' for 'fitatu <noun> <verb>'. Did you mean '<option>'? Run 'fitatu <noun> <verb> --help' for all options.` |
 | 2 | `Unexpected argument '<argument>' for 'fitatu <noun> <verb>'. Run 'fitatu <noun> <verb> --help' for all options.` |
