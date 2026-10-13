@@ -1,11 +1,11 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating, editing or deleting one — about their own Fitatu products: which ones they have, their brand, measures or nutrients per 100 g — wants to find a food in Fitatu, its ID, energy or measure — or asks to log a food or a recipe in their diary, or to remove one from it.
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating, editing or deleting one — about their own Fitatu products: which ones they have, their brand, measures or nutrients per 100 g, or adding one from a food label — wants to find a food in Fitatu, its ID, energy or measure — or asks to log a food or a recipe in their diary, or to remove one from it.
 ---
 
 # fitatu
 
-`fitatu` reads the user's Fitatu diary, recipes and products, searches Fitatu's foods, creates, edits and deletes recipes, puts foods into the diary and removes them, and prints plain text. Run it with Bash.
+`fitatu` reads the user's Fitatu diary, recipes and products, searches Fitatu's foods, creates, edits and deletes recipes, creates products, puts foods into the diary and removes them, and prints plain text. Run it with Bash.
 
 ## Commands
 
@@ -21,6 +21,7 @@ fitatu recipe edit ID SPEC                # change a recipe's fields given in SP
 fitatu recipe delete ID                   # delete one of the user's recipes
 fitatu product list                       # the user's own products, most used first
 fitatu product view ID                    # one product: brand, measures and nutrients per 100 g
+fitatu product create SPEC                # create a product from the label values in the JSON file SPEC; prints its ID
 fitatu entry create DATE MEAL --product ID --quantity N --measure ID  # put a product into a meal; prints the entry ID
 fitatu entry create DATE MEAL --recipe ID --quantity N  # put N portions of a recipe into a meal
 fitatu entry delete DATE ENTRY_ID         # remove one entry from a day
@@ -107,6 +108,23 @@ marks one of the user's own products; any product ID from `food search` works an
 shows `mine: no`. `-` marks a missing value; a missing nutrient is 0. A product
 without measures prints `no measures`.
 
+`fitatu product create SPEC` reads a JSON file with the values on a food label:
+
+```json
+{"name": "Bean stew", "brand": "Bistro", "energy": 129, "protein": 7.8, "fat": 3.4,
+ "carbohydrate": 10.9, "fiber": 1.2, "sugars": 2.3, "salt": 0.9, "per": 100}
+```
+
+`brand`, `fiber`, `sugars`, `salt` and `per` are optional; no other key is allowed.
+`energy` is in kcal, the other nutrients in grams, each a number of 0 or more. With
+`"per": 100`, the default, the values are per 100 g. When the label gives values per
+portion, copy them as printed and set `"per": {"measure": "portion", "grams": 450}`
+with the portion's weight: Fitatu stores them per 100 g and gives the product a
+`portion` measure (ID 39) of that weight. The command prints the new product's ID; the
+product is private to the user and shows up in `food search` and `product view`. Log
+it with `fitatu entry create DATE MEAL --product ID --measure 1 --quantity GRAMS`, or
+`--measure 39 --quantity PORTIONS` when it has a portion.
+
 `fitatu entry create DATE MEAL` adds one food to a meal of a day and prints the new
 entry ID, the `id` that `day view` shows for it. MEAL is the meal's name as `day view`
 shows it, or its key (`breakfast`, `second_breakfast`, `lunch`, `dinner`, `supper`),
@@ -130,7 +148,7 @@ from `food search`; an array of `{"id", "name", "uses"}` from `recipe list`;
 `{"id", "uses", "brand", "name"}` from `product list`, `brand` null when missing;
 `{"id", "name", "brand", "mine", "deleted", "measures": [{"id", "name", "grams"}],
 "per_100g"}` from `product view`; `{"id"}` from
-`recipe create` and `recipe edit`; `{"id", "name"}` from `recipe delete`; `{"id", "date",
+`recipe create`, `recipe edit` and `product create`; `{"id", "name"}` from `recipe delete`; `{"id", "date",
 "meal"}` from `entry create`; `{"id", "date", "meal", "name"}` from `entry delete`. Each `day view` food has its entry ID in `id`. `--raw`
 prints the service's day plan as JSON instead, or an array of day plans from `day
 list`. With `food search` it prints the service's search response; with `recipe
@@ -138,7 +156,7 @@ view`, the service's recipe; with `recipe create` and `recipe edit`, the service
 response; with `recipe list`, the service's search rows for every recipe, deleted
 ones included, unsorted. With `product view` it prints the service's product; with
 `product list`, the service's search rows for every product, deleted ones included,
-unsorted.
+unsorted; with `product create`, the service's response.
 
 `fitatu <noun> <verb> --help` lists every flag.
 
@@ -151,6 +169,8 @@ unsorted.
 - `recipe edit` changes the user's account too. Run it only when the user asks to
   change a recipe, and confirm the changes with them first. Use the ID it prints
   for any later command.
+- `product create` changes the user's account. Run it only when the user asks for a
+  new product, and confirm the name and the label's values with them first.
 - `recipe delete` changes the user's account and cannot be undone from the CLI. Run
   it only when the user asks, and confirm the recipe's ID and name with them first.
 - `entry create` changes the user's diary. Run it only when the user asks to log a
@@ -187,6 +207,8 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
 - `Fitatu rejected the recipe` (exit 1): an `itemId` or `measureId` in the spec is
   wrong, or an item is a recipe. Check each against `fitatu food search`, fix the
   spec and retry once.
+- `Fitatu rejected the product` (exit 1): Fitatu refused a value in the spec. Show
+  the full line to the user and stop.
 - `Fitatu did not save the entry (<reason>)` (exit 1): Fitatu refused the food,
   measure or quantity. Check them with `food search` or `recipe view`, then retry once.
 - `Fitatu's answer did not arrive ... the entry may be saved` (exit 1): do not run
@@ -198,8 +220,8 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
   user and stop.
 - Any other exit 1, such as a rate limit or no network: tell the user the second
   sentence and wait for them.
-- Exit 2: bad arguments, or a `recipe create` or `recipe edit` spec that fails its
-  checks. The
+- Exit 2: bad arguments, or a `recipe create`, `recipe edit` or `product create`
+  spec that fails its checks. The
   message names the fix (`Did you mean 'view'?`); correct the call and retry once.
   `No meal '<meal>' on <date>` lists the day's meals; retry with one of them.
 
