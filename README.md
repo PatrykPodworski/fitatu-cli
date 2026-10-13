@@ -322,6 +322,34 @@ The product shows up in `fitatu food search` and `fitatu product view`. Log it w
 
 With `--json`, it prints `{"id"}`.
 
+### `fitatu product edit ID SPEC`
+
+Changes one of your products, and prints its ID. `SPEC` is a JSON file with any of the
+keys of a `fitatu product create` spec, at least one, checked the same way:
+
+```json
+{"name": "Bean stew", "energy": 600, "per": {"measure": "portion", "grams": 450}}
+```
+
+```sh
+fitatu product edit 100000031 stew.json
+```
+
+```text
+100000032
+```
+
+- Each key given replaces that value.
+- Nutrients are per 100 g, or per portion with `"per": {"measure": "portion",
+  "grams": 450}`, which also sets the product's portion to that weight. Without it,
+  the product keeps its portion.
+- Any edit, even of the name alone, can give the product a new ID, so use the
+  printed ID. The old one stays, marked deleted, and diary entries keep using it.
+- A deleted product, one that is not yours, or one with a measure other than `g` and
+  `portion` is an error, and nothing is sent: an edit would drop that measure.
+
+With `--json`, it prints `{"id"}`.
+
 ### `fitatu product delete ID`
 
 Deletes one of your products and prints its ID and name. There is no confirmation
@@ -428,7 +456,8 @@ service's order, deleted recipes included.
 `fitatu product view --raw` prints Fitatu's response for the product unchanged.
 `fitatu product list --raw` prints Fitatu's search rows for your products, in the
 service's order, deleted products included. `fitatu product create --raw` prints
-Fitatu's response to the new product.
+Fitatu's response to the new product, and `fitatu product edit --raw` its response to
+the edit.
 
 ## Output and exit codes
 
@@ -455,6 +484,10 @@ example `fitatu --debug day view`.
 | 1 | `Fitatu has no recipe with ID <id>. Run 'fitatu recipe list' to see your recipes' IDs.` |
 | 1 | `Fitatu has no product with ID <id>. Run 'fitatu product list' to see your products' IDs.` |
 | 1 | `Fitatu rejected the product (HTTP <code>). Check the spec with 'fitatu product create --help'.` |
+| 1 | `Product <id> is deleted. An edit or a delete retires a product's ID; run 'fitatu product list' to see your products' IDs.` |
+| 1 | `Product <id> has a measure other than g and portion. An edit would drop it; edit this product in the Fitatu app.` |
+| 1 | `Product <id> is not one of yours. You can edit only your own products; run 'fitatu product list' to see them.` |
+| 1 | `Fitatu did not edit product <id> (HTTP <code>). You can edit only your own products; run 'fitatu product list' to see them.` |
 | 1 | `Product <id> is already deleted. Run 'fitatu product list' to see your products' IDs.` |
 | 1 | `Product <id> is not one of yours. You can delete only your own products; run 'fitatu product list' to see them.` |
 | 1 | `Fitatu did not delete product <id> (HTTP <code>). You can delete only your own products; run 'fitatu product list' to see them.` |
@@ -485,6 +518,7 @@ example `fitatu --debug day view`.
 | 2 | `No meal '<meal>' on <date>. Use one of: <meals>.` |
 | 2 | `Cannot read product spec '<path>' (<reason>). Give the path of a JSON file.` |
 | 2 | `Product spec '<path>' <problem> Run 'fitatu product create --help' for the spec's shape.` |
+| 2 | `Product spec '<path>' <problem> Run 'fitatu product edit --help' for the spec's shape.` |
 | 2 | `Missing --from for 'fitatu day list'. Run 'fitatu day list --help'.` |
 | 2 | `--from <date> is in the future. Give a --from on or before today.` |
 | 2 | `--to <date> is before --from <date>. Give a --to on or after --from.` |
