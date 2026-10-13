@@ -51,7 +51,7 @@ def test_help_exits_0(capsys: pytest.CaptureFixture[str]) -> None:
     assert exit.value.code == 0
     help_text = " ".join(capsys.readouterr().out.split())
     assert "usage: fitatu" in help_text
-    assert "{auth,day,entry,food,recipe}" in help_text
+    assert "{auth,day,entry,food,recipe,product}" in help_text
     assert "auth log in to Fitatu" in help_text
     assert "--debug show the full traceback on errors" in help_text
 
@@ -77,13 +77,13 @@ STATUS_HELP = "Run 'fitatu status view --help' for all options."
         (
             [],
             "No command given. Run 'fitatu <command>', one of: "
-            "auth, status, day, entry, food, recipe.",
+            "auth, status, day, entry, food, recipe, product.",
         ),
         (["statu"], "Unknown command 'statu'. Did you mean 'status'?"),
         (
             ["xyz"],
             "Unknown command 'xyz'. Run 'fitatu <command>', one of: "
-            "auth, status, day, entry, food, recipe.",
+            "auth, status, day, entry, food, recipe, product.",
         ),
         (
             ["status"],
@@ -152,7 +152,7 @@ def test_reads_sys_argv_by_default(
         (
             ["login"],
             "Unknown command 'login'. Run 'fitatu <command>', one of: "
-            "auth, day, entry, food, recipe.",
+            "auth, day, entry, food, recipe, product.",
         ),
         (
             ["day", "2026-07-05"],

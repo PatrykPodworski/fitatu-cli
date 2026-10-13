@@ -235,6 +235,60 @@ With `--json`, it prints `{"id", "name", "servings", "deleted", "ingredients",
 "per_portion"}`. Each ingredient is `{"name", "quantity", "measure"}`, and
 `per_portion` has the seven nutrients.
 
+### `fitatu product list`
+
+Prints your own products, most used first: the product ID, how many times you logged
+it, its brand and its name. It lists only products you created, not catalog foods you
+ate. Deleted products are hidden. `-` marks a product without a brand. With no
+products, it prints `no products`.
+
+```sh
+fitatu product list
+```
+
+```text
+id         uses  brand   name
+100000012  21    -       Granola
+100000011  4     Bakery  Rye bread
+```
+
+With `--json`, it prints an array of `{"id", "uses", "brand", "name"}`, with `brand`
+null when the product has none.
+
+### `fitatu product view ID`
+
+Prints one product: its fields, a table of its measures with the grams in one unit of
+each, and its nutrients per 100 g.
+
+```sh
+fitatu product view 100000011
+```
+
+```text
+id: 100000011
+name: Rye bread
+brand: Bakery
+mine: yes
+deleted: no
+
+measure_id  measure  grams
+7           slice    32.5
+1           g        1
+
+per 100 g
+energy_kcal  carbohydrate_g  protein_g  fat_g  fiber_g  sugars_g  salt_g
+240.3        45.1            7.8        1.6    6.2      2.9       1.2
+```
+
+Fitatu stores nutrients per 100 g, even for a product entered from a per-portion
+label. `mine: yes` marks one of your own products. Any product ID from `fitatu food
+search` works too, with `mine: no`. `-` marks a missing name, brand or measure field.
+A missing nutrient counts as 0. A product without measures prints `no measures`.
+
+With `--json`, it prints `{"id", "name", "brand", "mine", "deleted", "measures",
+"per_100g"}`. Each measure is `{"id", "name", "grams"}`, and `per_100g` has the seven
+nutrients.
+
 ### `fitatu entry create DATE MEAL (--product ID | --recipe ID) --quantity N [--measure ID]`
 
 Puts one product or recipe into a meal on a day, and prints the new entry ID.
@@ -318,6 +372,10 @@ field the summary does not have. `--raw` prints JSON without `--json`.
 `fitatu recipe list --raw` prints Fitatu's search rows for your recipes, in the
 service's order, deleted recipes included.
 
+`fitatu product view --raw` prints Fitatu's response for the product unchanged.
+`fitatu product list --raw` prints Fitatu's search rows for your products, in the
+service's order, deleted products included.
+
 ## Output and exit codes
 
 Results are plain text on stdout, or JSON with `--json` or `--raw`, with exit code 0.
@@ -341,15 +399,16 @@ example `fitatu --debug day view`.
 | 1 | `Could not reach Fitatu (<reason>). Check your internet connection and try again.` |
 | 1 | `Fitatu sent a response fitatu-cli could not read. Fitatu may have changed its API; rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Fitatu has no recipe with ID <id>. Run 'fitatu recipe list' to see your recipes' IDs.` |
+| 1 | `Fitatu has no product with ID <id>. Run 'fitatu product list' to see your products' IDs.` |
 | 1 | `Fitatu did not save the entry (<reason>). Check the food ID, the measure ID and the quantity.` |
 | 1 | `Fitatu's answer did not arrive (<reason>), so the entry may be saved. Wait a minute and check 'fitatu day view <date>' before you run this again.` |
 | 1 | `No entry '<id>' on <date>. Run 'fitatu day view <date>' to see the day's entry IDs.` |
 | 1 | `Fitatu did not delete the entry (<reason>). Rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Unexpected error (<reason>). Rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
-| 2 | `No command given. Run 'fitatu <command>', one of: auth, day, entry, food, recipe.` |
+| 2 | `No command given. Run 'fitatu <command>', one of: auth, day, entry, food, recipe, product.` |
 | 2 | `No command given. Run 'fitatu <noun> <command>', one of: <verbs>.` |
 | 2 | `Unknown command '<name>'. Did you mean '<command>'?` |
-| 2 | `Unknown command '<name>'. Run 'fitatu <command>', one of: auth, day, entry, food, recipe.` |
+| 2 | `Unknown command '<name>'. Run 'fitatu <command>', one of: auth, day, entry, food, recipe, product.` |
 | 2 | `Unknown command '<name>'. Run 'fitatu <noun> <command>', one of: <verbs>.` |
 | 2 | `Unknown option '<option>' for 'fitatu <noun> <verb>'. Did you mean '<option>'? Run 'fitatu <noun> <verb> --help' for all options.` |
 | 2 | `Unexpected argument '<argument>' for 'fitatu <noun> <verb>'. Run 'fitatu <noun> <verb> --help' for all options.` |
@@ -359,6 +418,7 @@ example `fitatu --debug day view`.
 | 2 | `Invalid date '<value>'. Use today, yesterday or YYYY-MM-DD.` |
 | 2 | `Invalid recipe ID '<value>'. Give the number from 'fitatu recipe list'.` |
 | 2 | `Invalid product ID '<value>'. Give the number from 'fitatu food search'.` |
+| 2 | `Invalid product ID '<value>'. Give the number from 'fitatu product list'.` |
 | 2 | `Invalid measure ID '<value>'. Give the number from 'fitatu food search'.` |
 | 2 | `Invalid quantity '<value>'. Give a number greater than 0.` |
 | 2 | `One of the arguments --product --recipe is required. Run 'fitatu entry create --help'.` |

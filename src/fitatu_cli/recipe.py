@@ -8,30 +8,13 @@ from urllib.error import HTTPError
 from fitatu_cli.client import Client, Connect
 from fitatu_cli.day import NUTRIENTS, table
 from fitatu_cli.errors import FitatuCliError, unreadable
+from fitatu_cli.food import user_foods
 
 Json = dict[str, Any]
 
 
-def recipe_rows(client: Client) -> list[Json]:
-    """The search rows of your recipes, deleted ones included, in service order.
-    The search pages through every food you created or used."""
-    rows: list[Json] = []
-    page_number = 1
-    while True:
-        # The search answers with a list, not the object `get` is typed for.
-        page: object = client.get(
-            f"/api/search/food/user/{{uid}}?phrase=&page={page_number}&limit=100"
-        )
-        if not isinstance(page, list):
-            raise unreadable()
-        if not page:
-            return rows
-        rows += [row for row in page if row.get("type") == "RECIPE"]
-        page_number += 1
-
-
 def list_recipes(args: argparse.Namespace, connect: Connect) -> list[Json]:
-    rows = recipe_rows(connect())
+    rows = user_foods(connect(), "RECIPE")
     if args.raw:
         return rows
     recipes = [
