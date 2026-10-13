@@ -1,11 +1,11 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating, editing or deleting one — wants to find a food in Fitatu, its ID, energy or measure — or asks to log a food or a recipe in their diary, or to remove one from it.
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating, editing or deleting one — about their own Fitatu products: which ones they have, their brand, measures or nutrients per 100 g — wants to find a food in Fitatu, its ID, energy or measure — or asks to log a food or a recipe in their diary, or to remove one from it.
 ---
 
 # fitatu
 
-`fitatu` reads the user's Fitatu diary and recipes, searches Fitatu's foods, creates, edits and deletes recipes, puts foods into the diary and removes them, and prints plain text. Run it with Bash.
+`fitatu` reads the user's Fitatu diary, recipes and products, searches Fitatu's foods, creates, edits and deletes recipes, puts foods into the diary and removes them, and prints plain text. Run it with Bash.
 
 ## Commands
 
@@ -19,6 +19,8 @@ fitatu recipe view ID                     # one recipe: ingredients and nutrient
 fitatu recipe create SPEC                 # create a recipe from the JSON file SPEC; prints its ID
 fitatu recipe edit ID SPEC                # change a recipe's fields given in SPEC; prints its ID
 fitatu recipe delete ID                   # delete one of the user's recipes
+fitatu product list                       # the user's own products, most used first
+fitatu product view ID                    # one product: brand, measures and nutrients per 100 g
 fitatu entry create DATE MEAL --product ID --quantity N --measure ID  # put a product into a meal; prints the entry ID
 fitatu entry create DATE MEAL --recipe ID --quantity N  # put N portions of a recipe into a meal
 fitatu entry delete DATE ENTRY_ID         # remove one entry from a day
@@ -91,6 +93,20 @@ either way. A deleted ID cannot be edited; take the current one from `recipe lis
 marked deleted: it drops out of `recipe list`, `recipe view ID` shows `deleted: yes`,
 and diary entries that use it still show it.
 
+`fitatu product list` prints a table with the columns `id`, `uses` (how many times
+the user logged the product), `brand` and `name`, most used first. It lists only the
+products the user created, not catalog foods they ate, and hides deleted ones. `-`
+marks a product without a brand. With no products it prints `no products`.
+
+`fitatu product view ID` prints `id:`, `name:`, `brand:`, `mine: yes|no` and
+`deleted: yes|no` lines, a table of measures (`measure_id`, `measure`, `grams`, the
+grams in one unit of the measure), then a `per 100 g` line and a one-row table of the
+nutrients, named as in `day view`. Nutrients are per 100 g even when the product was
+entered from a per-portion label; multiply by grams / 100 for a portion. `mine: yes`
+marks one of the user's own products; any product ID from `food search` works and
+shows `mine: no`. `-` marks a missing value; a missing nutrient is 0. A product
+without measures prints `no measures`.
+
 `fitatu entry create DATE MEAL` adds one food to a meal of a day and prints the new
 entry ID, the `id` that `day view` shows for it. MEAL is the meal's name as `day view`
 shows it, or its key (`breakfast`, `second_breakfast`, `lunch`, `dinner`, `supper`),
@@ -110,14 +126,19 @@ the old day; wait and read it again.
 `{"id", "type", "name", "brand", "energy", "measure": {"id", "name", "grams"}}`
 from `food search`; an array of `{"id", "name", "uses"}` from `recipe list`;
 `{"id", "name", "servings", "deleted", "ingredients": [{"name", "quantity", "measure"}],
-"per_portion"}` from `recipe view`, with `quantity` a number or null; `{"id"}` from
+"per_portion"}` from `recipe view`, with `quantity` a number or null; an array of
+`{"id", "uses", "brand", "name"}` from `product list`, `brand` null when missing;
+`{"id", "name", "brand", "mine", "deleted", "measures": [{"id", "name", "grams"}],
+"per_100g"}` from `product view`; `{"id"}` from
 `recipe create` and `recipe edit`; `{"id", "name"}` from `recipe delete`; `{"id", "date",
 "meal"}` from `entry create`; `{"id", "date", "meal", "name"}` from `entry delete`. Each `day view` food has its entry ID in `id`. `--raw`
 prints the service's day plan as JSON instead, or an array of day plans from `day
 list`. With `food search` it prints the service's search response; with `recipe
 view`, the service's recipe; with `recipe create` and `recipe edit`, the service's
 response; with `recipe list`, the service's search rows for every recipe, deleted
-ones included, unsorted.
+ones included, unsorted. With `product view` it prints the service's product; with
+`product list`, the service's search rows for every product, deleted ones included,
+unsorted.
 
 `fitatu <noun> <verb> --help` lists every flag.
 
@@ -157,6 +178,8 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
   `fitatu recipe list`, confirm the current recipe with the user, and retry with its ID.
 - `Fitatu has no recipe with ID <id>` (exit 1): the ID is wrong. Run `fitatu recipe
   list` and retry with an ID from it.
+- `Fitatu has no product with ID <id>` (exit 1): the ID is wrong. Run `fitatu
+  product list` and retry with an ID from it.
 - `Recipe <id> is already deleted` (exit 1): nothing to delete. Tell the user;
   `fitatu recipe list` shows the recipes they still have.
 - `Fitatu did not delete recipe <id>` (exit 1): the recipe is not the user's. Run

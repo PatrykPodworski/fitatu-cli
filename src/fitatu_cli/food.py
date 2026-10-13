@@ -58,6 +58,25 @@ def search_response(
     return response
 
 
+def user_foods(client: Client, food_type: str) -> list[Json]:
+    """The search rows of your foods of `food_type`, such as "RECIPE" or
+    "PRODUCT", deleted ones included, in service order. The search pages through
+    the foods you created; catalog foods you only ate are not in it."""
+    rows: list[Json] = []
+    page_number = 1
+    while True:
+        # The search answers with a list, not the object `get` is typed for.
+        page: object = client.get(
+            f"/api/search/food/user/{{uid}}?phrase=&page={page_number}&limit=100"
+        )
+        if not isinstance(page, list):
+            raise unreadable()
+        if not page:
+            return rows
+        rows += [row for row in page if row.get("type") == food_type]
+        page_number += 1
+
+
 def food_row(item: Json) -> Json:
     food_type = item.get("type")
     energy = item.get("energy")

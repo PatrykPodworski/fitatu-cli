@@ -1,30 +1,11 @@
 from typing import Any
 
 import pytest
-from conftest import FakeClient, http_error, run_json, run_text
+from conftest import SEARCH, FakeClient, SearchClient, http_error, run_json, run_text
 
 from fitatu_cli.cli import main
 
 Json = dict[str, Any]
-
-SEARCH = "/api/search/food/user/{{uid}}?phrase=&page={page}&limit=100"
-
-
-class SearchClient:
-    """Answers search page N with `pages[N - 1]`, and an empty page after the last,
-    and records the paths."""
-
-    def __init__(self, *pages: Any) -> None:
-        self.pages = pages
-        self.paths: list[str] = []
-
-    def get(self, path: str) -> Any:
-        self.paths.append(path)
-        for number, page in enumerate(self.pages, start=1):
-            if path == SEARCH.format(page=number):
-                return page
-        assert path == SEARCH.format(page=len(self.pages) + 1)
-        return []
 
 
 def row(food_id: int, name: str, uses: int | None, **fields: Any) -> Json:

@@ -62,6 +62,26 @@ class DiaryClient:
         return self.saved
 
 
+SEARCH = "/api/search/food/user/{{uid}}?phrase=&page={page}&limit=100"
+
+
+class SearchClient:
+    """Answers search page N with `pages[N - 1]`, and an empty page after the last,
+    and records the paths."""
+
+    def __init__(self, *pages: Any) -> None:
+        self.pages = pages
+        self.paths: list[str] = []
+
+    def get(self, path: str) -> Any:
+        self.paths.append(path)
+        for number, page in enumerate(self.pages, start=1):
+            if path == SEARCH.format(page=number):
+                return page
+        assert path == SEARCH.format(page=len(self.pages) + 1)
+        return []
+
+
 def run_json(argv: list[str], client: Any, capsys: pytest.CaptureFixture[str]) -> Any:
     assert main(argv, connect=lambda: client) == 0
     return json.loads(capsys.readouterr().out)
