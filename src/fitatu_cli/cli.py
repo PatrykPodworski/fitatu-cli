@@ -20,6 +20,7 @@ from fitatu_cli import (
     login,
     product,
     product_create,
+    product_edit,
     recipe,
     recipe_create,
     recipe_delete,
@@ -171,6 +172,7 @@ def build_parser() -> CliParser:
     recipe_delete.register(recipes)
     products = product.register(subparsers)
     product_create.register(products)
+    product_edit.register(products)
     parser.add_json_option()
     parser.name_commands()
     return parser
