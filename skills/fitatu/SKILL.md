@@ -1,11 +1,11 @@
 ---
 name: fitatu
-description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating, editing or deleting one — about their own Fitatu products: which ones they have, their brand, measures or nutrients per 100 g, or adding one from a food label — wants to find a food in Fitatu, its ID, energy or measure — or asks to log a food or a recipe in their diary, or to remove one from it.
+description: Use when the user asks about their Fitatu food diary — what they ate, meals, calories eaten, macros (protein, carbs, fat), fibre, sugar, salt, or per-kg intake (g/kg) — about their Fitatu recipes: which ones they have, their ingredients or nutrients per portion, or creating, editing or deleting one — about their own Fitatu products: which ones they have, their brand, measures or nutrients per 100 g, or adding one from a food label or deleting one — wants to find a food in Fitatu, its ID, energy or measure — or asks to log a food or a recipe in their diary, or to remove one from it.
 ---
 
 # fitatu
 
-`fitatu` reads the user's Fitatu diary, recipes and products, searches Fitatu's foods, creates, edits and deletes recipes, creates products, puts foods into the diary and removes them, and prints plain text. Run it with Bash.
+`fitatu` reads the user's Fitatu diary, recipes and products, searches Fitatu's foods, creates, edits and deletes recipes, creates and deletes products, puts foods into the diary and removes them, and prints plain text. Run it with Bash.
 
 ## Commands
 
@@ -22,6 +22,7 @@ fitatu recipe delete ID                   # delete one of the user's recipes
 fitatu product list                       # the user's own products, most used first
 fitatu product view ID                    # one product: brand, measures and nutrients per 100 g
 fitatu product create SPEC                # create a product from the label values in the JSON file SPEC; prints its ID
+fitatu product delete ID                  # delete one of the user's products
 fitatu entry create DATE MEAL --product ID --quantity N --measure ID  # put a product into a meal; prints the entry ID
 fitatu entry create DATE MEAL --recipe ID --quantity N  # put N portions of a recipe into a meal
 fitatu entry delete DATE ENTRY_ID         # remove one entry from a day
@@ -125,6 +126,11 @@ product is private to the user and shows up in `food search` and `product view`.
 it with `fitatu entry create DATE MEAL --product ID --measure 1 --quantity GRAMS`, or
 `--measure 39 --quantity PORTIONS` when it has a portion.
 
+`fitatu product delete ID` deletes one of the user's products and prints
+`deleted product <id>: <name>`. It asks no confirmation. Fitatu keeps the product
+marked deleted: it drops out of `product list`, `product view ID` shows `deleted: yes`,
+and diary entries that use it keep their name and values.
+
 `fitatu entry create DATE MEAL` adds one food to a meal of a day and prints the new
 entry ID, the `id` that `day view` shows for it. MEAL is the meal's name as `day view`
 shows it, or its key (`breakfast`, `second_breakfast`, `lunch`, `dinner`, `supper`),
@@ -148,7 +154,7 @@ from `food search`; an array of `{"id", "name", "uses"}` from `recipe list`;
 `{"id", "uses", "brand", "name"}` from `product list`, `brand` null when missing;
 `{"id", "name", "brand", "mine", "deleted", "measures": [{"id", "name", "grams"}],
 "per_100g"}` from `product view`; `{"id"}` from
-`recipe create`, `recipe edit` and `product create`; `{"id", "name"}` from `recipe delete`; `{"id", "date",
+`recipe create`, `recipe edit` and `product create`; `{"id", "name"}` from `recipe delete` and `product delete`; `{"id", "date",
 "meal"}` from `entry create`; `{"id", "date", "meal", "name"}` from `entry delete`. Each `day view` food has its entry ID in `id`. `--raw`
 prints the service's day plan as JSON instead, or an array of day plans from `day
 list`. With `food search` it prints the service's search response; with `recipe
@@ -173,6 +179,8 @@ unsorted; with `product create`, the service's response.
   new product, and confirm the name and the label's values with them first.
 - `recipe delete` changes the user's account and cannot be undone from the CLI. Run
   it only when the user asks, and confirm the recipe's ID and name with them first.
+- `product delete` changes the user's account and cannot be undone from the CLI. Run
+  it only when the user asks, and confirm the product's ID and name with them first.
 - `entry create` changes the user's diary. Run it only when the user asks to log a
   food, and confirm the day, meal, food and quantity first when they are unclear.
 - `entry delete` changes the user's diary too. Run it only when the user asks to
@@ -209,6 +217,11 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
   spec and retry once.
 - `Fitatu rejected the product` (exit 1): Fitatu refused a value in the spec. Show
   the full line to the user and stop.
+- `Product <id> is already deleted` (exit 1): nothing to delete. Tell the user;
+  `fitatu product list` shows the products they still have.
+- `Product <id> is not one of yours` or `Fitatu did not delete product <id>` (exit 1):
+  the ID is a catalog product or another user's. Run `fitatu product list` and check
+  the ID with the user.
 - `Fitatu did not save the entry (<reason>)` (exit 1): Fitatu refused the food,
   measure or quantity. Check them with `food search` or `recipe view`, then retry once.
 - `Fitatu's answer did not arrive ... the entry may be saved` (exit 1): do not run
