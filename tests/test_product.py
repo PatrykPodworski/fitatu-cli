@@ -280,12 +280,13 @@ def test_help_lists_product_and_its_verbs(capsys: pytest.CaptureFixture[str]) ->
 
     assert exit.value.code == 0
     help_text = " ".join(capsys.readouterr().out.split())
-    assert "usage: fitatu product [-h] {list,view,create,edit}" in help_text
+    assert "usage: fitatu product [-h] {list,view,create,edit,delete}" in help_text
     assert (
         " list list your products, most used first "
         "view view one product: measures and nutrients per 100 g "
         "create create a product from a food label's values and print its ID "
         "edit edit one of your products from a JSON spec and print its ID "
+        "delete delete one of your products "
     ) in help_text
 
 

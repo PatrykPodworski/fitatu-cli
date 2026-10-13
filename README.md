@@ -349,6 +349,26 @@ fitatu product edit 100000031 stew.json
 
 With `--json`, it prints `{"id"}`.
 
+### `fitatu product delete ID`
+
+Deletes one of your products and prints its ID and name. There is no confirmation
+prompt.
+
+```sh
+fitatu product delete 100000031
+```
+
+```text
+deleted product 100000031: Bean stew
+```
+
+Fitatu keeps the product marked deleted: it leaves `fitatu product list`, `fitatu
+product view` shows `deleted: yes`, and diary entries that use it keep their name and
+values. A catalog product, one with `mine: no`, cannot be deleted. `-` marks a product
+without a name.
+
+With `--json`, it prints `{"id", "name"}`.
+
 ### `fitatu entry create DATE MEAL (--product ID | --recipe ID) --quantity N [--measure ID]`
 
 Puts one product or recipe into a meal on a day, and prints the new entry ID.
@@ -466,6 +486,9 @@ example `fitatu --debug day view`.
 | 1 | `Product <id> is deleted. An edit can give a product a new ID; run 'fitatu product list' for its current ID.` |
 | 1 | `Product <id> is not one of yours. You can edit only your own products; run 'fitatu product list' to see them.` |
 | 1 | `Fitatu did not edit product <id> (HTTP <code>). You can edit only your own products; run 'fitatu product list' to see them.` |
+| 1 | `Product <id> is already deleted. Run 'fitatu product list' to see your products' IDs.` |
+| 1 | `Product <id> is not one of yours. You can delete only your own products; run 'fitatu product list' to see them.` |
+| 1 | `Fitatu did not delete product <id> (HTTP <code>). You can delete only your own products; run 'fitatu product list' to see them.` |
 | 1 | `Fitatu did not save the entry (<reason>). Check the food ID, the measure ID and the quantity.` |
 | 1 | `Fitatu's answer did not arrive (<reason>), so the entry may be saved. Wait a minute and check 'fitatu day view <date>' before you run this again.` |
 | 1 | `No entry '<id>' on <date>. Run 'fitatu day view <date>' to see the day's entry IDs.` |
