@@ -130,9 +130,9 @@ it with `fitatu entry create DATE MEAL --product ID --measure 1 --quantity GRAMS
 the keys of a `product create` spec, at least one; each key given replaces that
 value. Nutrients are per 100 g, or per portion with `"per": {"measure": "portion",
 "grams": 450}`, which also sets the product's portion to that weight; without it the
-product keeps its portion. The command prints the product's ID. An edit of the
-nutrients or of the portion can give the product a new ID: the old one stays, marked
-deleted, and diary entries keep using it. Name and brand edits keep the ID.
+product keeps its portion. The command prints the product's ID. Any edit, even of
+the name alone, can give the product a new ID: use the printed ID from then on. The
+old one stays, marked deleted, and diary entries keep using it.
 
 `fitatu entry create DATE MEAL` adds one food to a meal of a day and prints the new
 entry ID, the `id` that `day view` shows for it. MEAL is the meal's name as `day view`
@@ -212,7 +212,7 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
   list` and retry with an ID from it.
 - `Fitatu has no product with ID <id>` (exit 1): the ID is wrong. Run `fitatu
   product list` and retry with an ID from it.
-- `Product <id> is deleted` (exit 1): an edit of the nutrients retired that ID. Run
+- `Product <id> is deleted` (exit 1): an edit or a delete retired that ID. Run
   `fitatu product list`, confirm the current product with the user, and retry with
   its ID.
 - `Product <id> is not one of yours` or `Fitatu did not edit product <id>` (exit 1):

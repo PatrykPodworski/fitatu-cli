@@ -2,8 +2,8 @@
 Fitatu has no partial update: the command reads the product and sends it back whole,
 with the spec applied. Fitatu reads the nutrients of a product with a portion as per
 portion, and drops a portion the request leaves out, so the body follows the product's
-portion. An edit of the nutrients or of the portion can save the product under a new
-ID and mark the old one deleted; name and brand edits keep the ID."""
+portion. Any edit can save the product under a new ID and mark the old one deleted;
+which edits do is not predictable."""
 
 import argparse
 from typing import Any
@@ -92,7 +92,7 @@ def edit_product(args: argparse.Namespace, connect: Connect) -> Json:
     if product.get("deleted"):
         raise FitatuCliError(
             f"Product {args.id} is deleted.",
-            "An edit of its nutrients gives a product a new ID; "
+            "An edit can give a product a new ID; "
             "run 'fitatu product list' for its current ID.",
         )
     if product.get("private") is not True:
@@ -114,9 +114,9 @@ def register(verbs: "argparse._SubParsersAction[argparse.ArgumentParser]") -> No
             'value. Nutrients are per 100 g, or per portion with "per": '
             '{"measure": "portion", "grams": 450}, which also sets the product\'s '
             "portion to that weight; otherwise the product keeps its portion. "
-            "Prints the product's ID. An edit of the nutrients or of the portion "
-            "can give the product a new ID; the old one stays, marked deleted, and "
-            "diary entries keep using it."
+            "Prints the product's ID. Any edit can give the product a new ID, so "
+            "use the printed one; the old one stays, marked deleted, and diary "
+            "entries keep using it."
         ),
     )
     edit.add_argument("id", metavar="ID", type=product_id, help="the product's ID")

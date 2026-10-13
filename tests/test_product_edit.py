@@ -45,7 +45,7 @@ PORTION: Json = {
     "salt": 0.9,
 }
 KEPT = {"id": 501, "name": "Oat crunch", "newProductCreated": False}
-# Fitatu saves an edit of the nutrients under a new ID.
+# Fitatu can save any edit under a new ID.
 REPLACED = {"id": 503, "name": "Bean stew", "newProductCreated": True}
 PORTION_MEASURE = {"measureKey": "PORTION", "measureUnit": "g", "weight": 450}
 SHAPE = "Run 'fitatu product edit --help' for the spec's shape."
@@ -282,8 +282,8 @@ def test_product_edit_refuses_a_deleted_product(
     client = FakeClient(get=PORTION | {"deleted": True}, put=REPLACED)
 
     assert run_failing(client, tmp_path, capsys) == (
-        "fitatu: Product 502 is deleted. An edit of its nutrients gives a product a "
-        "new ID; run 'fitatu product list' for its current ID.\n"
+        "fitatu: Product 502 is deleted. An edit can give a product a new ID; run "
+        "'fitatu product list' for its current ID.\n"
     )
     assert [name for name, _, _ in client.calls] == ["get"]
 
@@ -404,9 +404,8 @@ def test_product_edit_help_says_which_edits_give_a_new_id(
         'value. Nutrients are per 100 g, or per portion with "per": {"measure": '
         '"portion", "grams": 450}, which also sets the product\'s portion to that '
         "weight; otherwise the product keeps its portion. Prints the product's "
-        "ID. An edit of the nutrients or of the portion can give the product a "
-        "new ID; the old one stays, marked deleted, and diary entries keep using "
-        "it. "
+        "ID. Any edit can give the product a new ID, so use the printed one; the "
+        "old one stays, marked deleted, and diary entries keep using it. "
     )
     assert (
         " positional arguments: ID the product's ID SPEC the changes' JSON file "
