@@ -289,6 +289,39 @@ With `--json`, it prints `{"id", "name", "brand", "mine", "deleted", "measures",
 "per_100g"}`. Each measure is `{"id", "name", "grams"}`, and `per_100g` has the seven
 nutrients.
 
+### `fitatu product create SPEC`
+
+Creates a private product from the values on a food label, and prints its ID. `SPEC`
+is a JSON file:
+
+```json
+{"name": "Bean stew", "brand": "Bistro", "energy": 129, "protein": 7.8, "fat": 3.4,
+ "carbohydrate": 10.9, "fiber": 1.2, "sugars": 2.3, "salt": 0.9, "per": 100}
+```
+
+```sh
+fitatu product create stew.json
+```
+
+```text
+100000031
+```
+
+- `brand`, `fiber`, `sugars`, `salt` and `per` are optional. Any other key is an
+  error.
+- `energy` is in kcal, the other nutrients in grams. Each is a number of 0 or more.
+- With `"per": 100`, the default, the values are per 100 g. The product gets one
+  measure, `g`.
+- With `"per": {"measure": "portion", "grams": 450}`, the values are per portion of
+  450 g, entered as printed on the label. Fitatu stores them per 100 g and gives the
+  product a `portion` measure, ID 39, of that weight.
+
+The product shows up in `fitatu food search` and `fitatu product view`. Log it with
+`fitatu entry create DATE MEAL --product ID --measure 1 --quantity GRAMS`, or with
+`--measure 39 --quantity PORTIONS` when it has a portion.
+
+With `--json`, it prints `{"id"}`.
+
 ### `fitatu entry create DATE MEAL (--product ID | --recipe ID) --quantity N [--measure ID]`
 
 Puts one product or recipe into a meal on a day, and prints the new entry ID.
@@ -374,7 +407,8 @@ service's order, deleted recipes included.
 
 `fitatu product view --raw` prints Fitatu's response for the product unchanged.
 `fitatu product list --raw` prints Fitatu's search rows for your products, in the
-service's order, deleted products included.
+service's order, deleted products included. `fitatu product create --raw` prints
+Fitatu's response to the new product.
 
 ## Output and exit codes
 
@@ -400,6 +434,7 @@ example `fitatu --debug day view`.
 | 1 | `Fitatu sent a response fitatu-cli could not read. Fitatu may have changed its API; rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Fitatu has no recipe with ID <id>. Run 'fitatu recipe list' to see your recipes' IDs.` |
 | 1 | `Fitatu has no product with ID <id>. Run 'fitatu product list' to see your products' IDs.` |
+| 1 | `Fitatu rejected the product (HTTP <code>). Check the spec with 'fitatu product create --help'.` |
 | 1 | `Fitatu did not save the entry (<reason>). Check the food ID, the measure ID and the quantity.` |
 | 1 | `Fitatu's answer did not arrive (<reason>), so the entry may be saved. Wait a minute and check 'fitatu day view <date>' before you run this again.` |
 | 1 | `No entry '<id>' on <date>. Run 'fitatu day view <date>' to see the day's entry IDs.` |
@@ -425,6 +460,8 @@ example `fitatu --debug day view`.
 | 2 | `Argument --recipe: not allowed with argument --product. Run 'fitatu entry create --help'.` |
 | 2 | `--product needs --measure. Give the measure ID from 'fitatu food search'.` |
 | 2 | `No meal '<meal>' on <date>. Use one of: <meals>.` |
+| 2 | `Cannot read product spec '<path>' (<reason>). Give the path of a JSON file.` |
+| 2 | `Product spec '<path>' <problem> Run 'fitatu product create --help' for the spec's shape.` |
 | 2 | `Missing --from for 'fitatu day list'. Run 'fitatu day list --help'.` |
 | 2 | `--from <date> is in the future. Give a --from on or before today.` |
 | 2 | `--to <date> is before --from <date>. Give a --to on or after --from.` |

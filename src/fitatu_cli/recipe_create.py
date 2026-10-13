@@ -2,16 +2,17 @@
 it to Fitatu's recipe catalog."""
 
 import argparse
-import json
 from collections.abc import Callable, Iterable
-from typing import Any, cast
+from typing import Any
 from urllib.error import HTTPError
 
 from fitatu_cli.client import Connect
 from fitatu_cli.errors import FitatuCliError, unreadable
+from fitatu_cli.spec import load_spec, spec_error
 
 Json = dict[str, Any]
 
+NOUN = "Recipe"
 SEARCH = "Take itemId and measureId from 'fitatu food search'."
 ITEM_KEYS = ("itemId", "measureId", "measureQuantity")
 # The web app refuses a recipe with fewer ingredients; the service accepts one.
@@ -27,17 +28,13 @@ NEW_RECIPE: Json = {
 }
 
 
-def spec_error(path: str, verb: str, problem: str) -> argparse.ArgumentTypeError:
-    return argparse.ArgumentTypeError(
-        f"Recipe spec '{path}' {problem} "
-        f"Run 'fitatu recipe {verb} --help' for the spec's shape."
-    )
-
-
 def check_items(path: str, verb: str, items: object) -> None:
     if not isinstance(items, list) or len(items) < MIN_ITEMS:
         raise spec_error(
-            path, verb, f'needs "items": a list of at least {MIN_ITEMS} ingredients.'
+            path,
+            NOUN,
+            verb,
+            f'needs "items": a list of at least {MIN_ITEMS} ingredients.',
         )
     for number, item in enumerate(items, start=1):
         where = f"Item {number} in recipe spec '{path}'"
@@ -48,31 +45,12 @@ def check_items(path: str, verb: str, items: object) -> None:
                 raise argparse.ArgumentTypeError(f'{where} needs "{key}". {SEARCH}')
 
 
-def load_spec(path: str, verb: str) -> Json:
-    """The JSON object in the file at `path`."""
-    try:
-        with open(path) as file:
-            spec = json.load(file)
-    except OSError as error:
-        raise argparse.ArgumentTypeError(
-            f"Cannot read recipe spec '{path}' ({error.strerror}). "
-            "Give the path of a JSON file."
-        ) from None
-    except json.JSONDecodeError as error:
-        raise spec_error(
-            path, verb, f"is not valid JSON ({error.msg}, line {error.lineno})."
-        ) from None
-    if not isinstance(spec, dict):
-        raise spec_error(path, verb, "is not a JSON object.")
-    return cast(Json, spec)
-
-
 def check_fields(path: str, verb: str, spec: Json, keys: Iterable[str]) -> None:
     """Checks the spec's `keys`; a missing key fails as an invalid one."""
     if "name" in keys:
         name = spec.get("name")
         if not isinstance(name, str) or not name:
-            raise spec_error(path, verb, 'needs "name": a non-empty string.')
+            raise spec_error(path, NOUN, verb, 'needs "name": a non-empty string.')
     if "serving" in keys:
         serving = spec.get("serving")
         if (
@@ -80,14 +58,14 @@ def check_fields(path: str, verb: str, spec: Json, keys: Iterable[str]) -> None:
             or not isinstance(serving, int | float)
             or serving <= 0
         ):
-            raise spec_error(path, verb, 'needs "serving": a positive number.')
+            raise spec_error(path, NOUN, verb, 'needs "serving": a positive number.')
     if "items" in keys:
         check_items(path, verb, spec.get("items"))
 
 
 def recipe_spec(path: str) -> Json:
     """The spec in the file at `path`, checked before any request."""
-    spec = load_spec(path, "create")
+    spec = load_spec(path, NOUN, "create")
     check_fields(path, "create", spec, ("name", "serving", "items"))
     return spec
 

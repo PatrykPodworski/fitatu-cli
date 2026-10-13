@@ -12,12 +12,12 @@ from fitatu_cli.recipe import read_recipe, recipe_id
 from fitatu_cli.recipe_create import (
     ITEM_KEYS,
     NEW_RECIPE,
+    NOUN,
     check_fields,
-    load_spec,
     saved,
-    spec_error,
     spec_fields,
 )
+from fitatu_cli.spec import load_spec, spec_error
 
 Json = dict[str, Any]
 
@@ -30,11 +30,12 @@ KEPT = ("name", "serving", *NEW_RECIPE)
 
 def edit_spec(path: str) -> Json:
     """The spec in the file at `path`, checked before any request."""
-    spec = load_spec(path, "edit")
+    spec = load_spec(path, NOUN, "edit")
     keys = [key for key in FIELDS if key in spec]
     if not keys:
         raise spec_error(
             path,
+            NOUN,
             "edit",
             'needs at least one of "name", "serving", "description" or "items".',
         )
