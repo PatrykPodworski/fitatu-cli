@@ -24,6 +24,7 @@ from fitatu_cli.spec import finite, load_spec, spec_error
 
 Json = dict[str, Any]
 
+GRAM_MEASURE = 1
 PORTION_MEASURE = 39
 YOURS = "run 'fitatu product list' to see them."
 
@@ -54,24 +55,25 @@ def current_portion(product: Json) -> float | None:
 
 def edit_body(product: Json, spec: Json) -> Json:
     """The product's values with the spec applied: per 100 g without a portion, and
-    per portion, with the portion measure, with one."""
+    per portion, with the portion measure, with one. Values are not rounded: Fitatu
+    stores `value * 100 / grams` to 2 decimals, and a rounded value per small
+    portion would change the stored value per 100 g."""
     per = spec.get("per")
     new_portion = per["grams"] if isinstance(per, dict) else None
-    values: Json = {key: product.get(key) for key in ("name", "brand", *NUTRIENTS)}
-    for key in ("name", "brand"):
-        if key in spec:
-            values[key] = spec[key]
-    for key in NUTRIENTS:
-        if key in spec:
-            values[key] = spec[key] * PER_100_G / (new_portion or PER_100_G)
     portion = new_portion or current_portion(product)
-    if portion is None:
-        return values
+    body: Json = {key: spec.get(key, product.get(key)) for key in ("name", "brand")}
     for key in NUTRIENTS:
-        if values[key] is not None:
-            values[key] = round(values[key] * portion / PER_100_G, 2)
+        if key in spec and new_portion:
+            body[key] = spec[key]
+            continue
+        value = spec.get(key, product.get(key))
+        body[key] = (
+            value * portion / PER_100_G if portion and value is not None else value
+        )
+    if portion is None:
+        return body
     measure = {"measureKey": "PORTION", "measureUnit": "g", "weight": portion}
-    return values | {"measures": [measure]}
+    return body | {"measures": [measure]}
 
 
 def put(client: Client, id: int, body: Json) -> Json:
@@ -92,13 +94,20 @@ def edit_product(args: argparse.Namespace, connect: Connect) -> Json:
     if product.get("deleted"):
         raise FitatuCliError(
             f"Product {args.id} is deleted.",
-            "An edit can give a product a new ID; "
-            "run 'fitatu product list' for its current ID.",
+            "An edit or a delete retires a product's ID; "
+            "run 'fitatu product list' to see your products' IDs.",
         )
     if product.get("private") is not True:
         raise FitatuCliError(
             f"Product {args.id} is not one of yours.",
             f"You can edit only your own products; {YOURS}",
+        )
+    # A PUT replaces the measures, and the body can carry only the portion.
+    measures = product.get("measures") or []
+    if any(m.get("id") not in (GRAM_MEASURE, PORTION_MEASURE) for m in measures):
+        raise FitatuCliError(
+            f"Product {args.id} has a measure other than g and portion.",
+            "An edit would drop it; edit this product in the Fitatu app.",
         )
     body = edit_body(product, args.spec)
     return saved(args, lambda: put(client, args.id, body))

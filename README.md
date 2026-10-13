@@ -345,7 +345,8 @@ fitatu product edit 100000031 stew.json
   the product keeps its portion.
 - Any edit, even of the name alone, can give the product a new ID, so use the
   printed ID. The old one stays, marked deleted, and diary entries keep using it.
-- A deleted product, or one that is not yours, is an error, and nothing is sent.
+- A deleted product, one that is not yours, or one with a measure other than `g` and
+  `portion` is an error, and nothing is sent: an edit would drop that measure.
 
 With `--json`, it prints `{"id"}`.
 
@@ -483,7 +484,8 @@ example `fitatu --debug day view`.
 | 1 | `Fitatu has no recipe with ID <id>. Run 'fitatu recipe list' to see your recipes' IDs.` |
 | 1 | `Fitatu has no product with ID <id>. Run 'fitatu product list' to see your products' IDs.` |
 | 1 | `Fitatu rejected the product (HTTP <code>). Check the spec with 'fitatu product create --help'.` |
-| 1 | `Product <id> is deleted. An edit can give a product a new ID; run 'fitatu product list' for its current ID.` |
+| 1 | `Product <id> is deleted. An edit or a delete retires a product's ID; run 'fitatu product list' to see your products' IDs.` |
+| 1 | `Product <id> has a measure other than g and portion. An edit would drop it; edit this product in the Fitatu app.` |
 | 1 | `Product <id> is not one of yours. You can edit only your own products; run 'fitatu product list' to see them.` |
 | 1 | `Fitatu did not edit product <id> (HTTP <code>). You can edit only your own products; run 'fitatu product list' to see them.` |
 | 1 | `Product <id> is already deleted. Run 'fitatu product list' to see your products' IDs.` |

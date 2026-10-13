@@ -223,6 +223,8 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
 - `Product <id> is deleted` (exit 1): an edit or a delete retired that ID. Run
   `fitatu product list`, confirm the current product with the user, and retry with
   its ID.
+- `Product <id> has a measure other than g and portion` (exit 1): the CLI cannot
+  edit it without dropping that measure. Tell the user to edit it in the Fitatu app.
 - `Product <id> is not one of yours` or `Fitatu did not edit product <id>` (exit 1):
   the user can edit only their own products. Run `fitatu product list` and check the
   ID with the user.

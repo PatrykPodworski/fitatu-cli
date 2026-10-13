@@ -135,7 +135,7 @@ def test_product_edit_converts_nutrients_per_100_g_on_a_portion_product(
     )
 
     body = put_body(client)
-    assert (body["energy"], body["protein"]) == (580, 36.9)
+    assert (body["energy"], body["protein"]) == (pytest.approx(580.005), 36.9)
     assert body["measures"] == [PORTION_MEASURE]
 
 
@@ -222,20 +222,24 @@ def test_product_edit_sends_missing_values_as_null_and_no_measures(
     }
 
 
-def test_product_edit_keeps_a_portion_under_a_gram(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+@pytest.mark.parametrize("grams", [0.5, 5, 30])
+def test_product_edit_of_a_small_portion_keeps_the_nutrients_per_100_g(
+    grams: float, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    measures = [{"id": 39, "name": "portion", "weightPerUnit": 0.5}]
-    client = FakeClient(get=PORTION | {"measures": measures}, put=REPLACED)
+    stored = {"energy": 128.89, "protein": 7.8, "fat": 3.47, "carbohydrate": 10.89}
+    stored |= {"fiber": 1.23, "sugars": 0.04, "salt": 0.27}
+    measures = [{"id": 39, "name": "portion", "weightPerUnit": grams}]
+    client = FakeClient(get=PORTION | stored | {"measures": measures}, put=REPLACED)
 
     run_text(
         ["product", "edit", "502", write(tmp_path, {"name": "Soup"})], client, capsys
     )
 
     body = put_body(client)
-    assert (body["energy"], body["protein"]) == (0.64, 0.04)
+    # Fitatu stores a per-portion value as value * 100 / grams, to 2 decimals.
+    assert {key: round(body[key] * 100 / grams, 2) for key in stored} == stored
     assert body["measures"] == [
-        {"measureKey": "PORTION", "measureUnit": "g", "weight": 0.5}
+        {"measureKey": "PORTION", "measureUnit": "g", "weight": grams}
     ]
 
 
@@ -282,8 +286,24 @@ def test_product_edit_refuses_a_deleted_product(
     client = FakeClient(get=PORTION | {"deleted": True}, put=REPLACED)
 
     assert run_failing(client, tmp_path, capsys) == (
-        "fitatu: Product 502 is deleted. An edit can give a product a new ID; run "
-        "'fitatu product list' for its current ID.\n"
+        "fitatu: Product 502 is deleted. An edit or a delete retires a product's "
+        "ID; run 'fitatu product list' to see your products' IDs.\n"
+    )
+    assert [name for name, _, _ in client.calls] == ["get"]
+
+
+@pytest.mark.parametrize("id", [7, None])
+def test_product_edit_refuses_a_product_with_another_measure(
+    id: object, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    other = {"id": id, "name": "slice", "weightPerUnit": 32.5}
+    client = FakeClient(
+        get=PORTION | {"measures": [*PORTION["measures"], other]}, put=REPLACED
+    )
+
+    assert run_failing(client, tmp_path, capsys) == (
+        "fitatu: Product 502 has a measure other than g and portion. An edit "
+        "would drop it; edit this product in the Fitatu app.\n"
     )
     assert [name for name, _, _ in client.calls] == ["get"]
 
@@ -389,7 +409,7 @@ def test_product_edit_rejects_an_id_that_is_not_a_number(
     )
 
 
-def test_product_edit_help_says_which_edits_give_a_new_id(
+def test_product_edit_help_says_any_edit_can_give_a_new_id(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     with pytest.raises(SystemExit) as exit:
