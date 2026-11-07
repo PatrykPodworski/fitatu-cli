@@ -161,24 +161,32 @@ def create_entry(args: argparse.Namespace, connect: Connect) -> Json:
         "source": "API",
         "updatedAt": timestamp(datetime.now()),
     }
+    # Each run makes a new entry, so a write that may have landed must not invite
+    # a rerun.
     try:
         save_item(client, args.date, plan, key, item)
+    except HTTPError as error:
+        # Only a 5xx gets past `save_item` and `http`, and a gateway's 5xx can come
+        # after Fitatu took the write.
+        raise maybe_saved(args.date, f"HTTP {error.code}") from error
     except FitatuCliError as error:
         # A connection lost after the request went out may still have saved the
-        # entry, and each run makes a new entry. An HTTPError, such as a 429, is
-        # an OSError too, but an answer.
+        # entry. An HTTPError, such as a 429, is an OSError too, but an answer.
         cause = error.__cause__
         if not isinstance(cause, OSError | IncompleteRead) or isinstance(
             cause, HTTPError
         ):
             raise
-        raise FitatuCliError(
-            f"Fitatu's answer did not arrive ({reason(cause)}), so the "
-            "entry may be saved.",
-            f"Wait a minute and check 'fitatu day view {args.date:%Y-%m-%d}' "
-            "before you run this again.",
-        ) from error
+        raise maybe_saved(args.date, reason(cause)) from error
     return {"id": entry_id, "date": f"{args.date:%Y-%m-%d}", "meal": meal}
+
+
+def maybe_saved(day: date, why: str) -> FitatuCliError:
+    return FitatuCliError(
+        f"Fitatu's answer did not arrive ({why}), so the entry may be saved.",
+        f"Wait a minute and check 'fitatu day view {day:%Y-%m-%d}' "
+        "before you run this again.",
+    )
 
 
 def entry_text(entry: Json) -> str:

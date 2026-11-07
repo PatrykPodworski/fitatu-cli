@@ -368,17 +368,37 @@ def test_entry_create_reports_a_refused_write(
     )
 
 
-def test_entry_create_reports_a_server_error_as_unexpected(
+@pytest.mark.parametrize("code", [500, 502, 504])
+def test_entry_create_after_a_server_error_says_to_check_the_day_before_a_retry(
+    code: int, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A gateway's 5xx can come after Fitatu took the write, and a second run logs
+    the food twice."""
+    client: Any = DiaryClient({DAY: PLAN}, http_error(code))
+
+    assert (
+        main(["entry", "create", "2026-07-05", "lunch", *PRODUCT], lambda: client) == 1
+    )
+    assert capsys.readouterr().err == (
+        f"fitatu: Fitatu's answer did not arrive (HTTP {code}), so the entry "
+        "may be saved. Wait a minute and check 'fitatu day view 2026-07-05' "
+        "before you run this again.\n"
+    )
+
+
+def test_entry_create_reports_a_server_error_on_the_day_read_as_unexpected(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    client: Any = DiaryClient({DAY: PLAN}, http_error(500))
+    """Nothing is written before the day is read, so a rerun is safe."""
+    client: Any = DiaryClient({DAY: http_error(502)})
 
     assert (
         main(["entry", "create", "2026-07-05", "lunch", *PRODUCT], lambda: client) == 1
     )
     assert capsys.readouterr().err.startswith(
-        "fitatu: Unexpected error (HTTPError: HTTP Error 500: error)."
+        "fitatu: Unexpected error (HTTPError: HTTP Error 502: error)."
     )
+    assert [call[0] for call in client.calls] == ["get"]
 
 
 @pytest.mark.parametrize(

@@ -245,9 +245,10 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
   the ID with the user.
 - `Fitatu did not save the entry (<reason>)` (exit 1): Fitatu refused the food,
   measure or quantity. Check them with `food search` or `recipe view`, then retry once.
-- `Fitatu's answer did not arrive ... the entry may be saved` (exit 1): do not run
-  `entry create` again yet. Wait a minute, run the `fitatu day view DATE` it names,
-  and create the entry only if it is not there.
+- `Fitatu's answer did not arrive ... the entry may be saved` (exit 1): the
+  connection broke, or a server error (HTTP 5xx) came back, after the write went
+  out. Do not run `entry create` again yet. Wait a minute, run the
+  `fitatu day view DATE` it names, and create the entry only if it is not there.
 - `No entry '<id>' on <date>` (exit 1): the ID is not on that day. Run the
   `fitatu day view` it names and retry with an ID from its `id` column.
 - `Fitatu did not delete the entry (<reason>)` (exit 1): show the full line to the
