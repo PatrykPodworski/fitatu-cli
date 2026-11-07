@@ -50,8 +50,14 @@ fail_under = 90
 [tool.vulture]
 paths = ["src", "tests"]
 min_confidence = 60
-# Fixtures used only through @pytest.mark.usefixtures or autouse.
-ignore_names = ["read_command", "fixed_clock_and_node", "fixed_clock"]
+ignore_names = [
+    # Fixtures used only through @pytest.mark.usefixtures or autouse.
+    "read_command",
+    "fixed_clock_and_node",
+    "fixed_clock",
+    # A urllib handler hook, which urllib calls by name.
+    "redirect_request",
+]
 
 [tool.mutmut]
 source_paths = ["src/"]
