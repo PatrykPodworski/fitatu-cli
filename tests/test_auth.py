@@ -507,3 +507,70 @@ def test_a_refresh_of_a_session_without_email_saves_none(account: Path) -> None:
     client(http).get(DAY)
 
     assert "email" not in json.loads(account.read_text())
+
+
+@pytest.mark.parametrize(
+    "content",
+    ["", '{"token": "head', "[]", "null"],
+    ids=["empty", "cut-off", "list", "null"],
+)
+def test_an_unreadable_session_file_logs_in(
+    account: Path, capsys: pytest.CaptureFixture[str], content: str
+) -> None:
+    account.parent.mkdir(parents=True)
+    account.write_text(content)
+    http = FakeHttp({LOGIN: [logged_in()], DAY_101: [PLAN]})
+    argv = ["day", "view", "2026-07-05", "--json"]
+
+    assert main(argv, connect=lambda: client(http)) == 0
+
+    assert capsys.readouterr().err == ""
+    assert http.paths == [LOGIN, DAY_101]
+    assert json.loads(account.read_text())["token"] == NEW_TOKEN
+
+
+@pytest.mark.parametrize(
+    "token", ["not-a-token", "header.%%%.sig", "header.bm90IGpzb24.sig"]
+)
+def test_a_token_that_does_not_decode_logs_in(account: Path, token: str) -> None:
+    save(account, token=token)
+    http = FakeHttp({LOGIN: [logged_in()], DAY_101: [PLAN]})
+
+    assert client(http).get(DAY) == PLAN
+
+    assert http.paths == [LOGIN, DAY_101]
+
+
+def test_a_token_that_does_not_decode_is_refreshed(account: Path) -> None:
+    save(account, token="not-a-token", refresh_token="fake-refresh")
+    http = FakeHttp({REFRESH: [logged_in()], DAY_101: [PLAN]})
+
+    assert client(http).get(DAY) == PLAN
+
+    assert http.paths == [REFRESH, DAY_101]
+    assert http.calls[0][2] == {"refresh_token": "fake-refresh"}
+
+
+def test_an_interrupted_save_keeps_the_previous_session(
+    account: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    save(account, token=TOKEN, email=EMAIL)
+    previous = account.read_text()
+
+    def interrupted(_: Any, file: Any, **__: Any) -> None:
+        file.write('{"token": "head')
+        file.flush()
+        # A reader running now, such as a parallel fitatu process, sees the
+        # file as it is at this moment.
+        assert account.read_text() == previous
+        # The new session is written beside the old one, since os.replace
+        # cannot move a file to another filesystem.
+        assert len(list(account.parent.iterdir())) == 2
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(json, "dump", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        auth.save({"token": NEW_TOKEN, "uid": "101"})
+
+    assert account.read_text() == previous
+    assert [path.name for path in account.parent.iterdir()] == [account.name]

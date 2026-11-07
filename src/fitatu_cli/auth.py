@@ -5,6 +5,7 @@ import base64
 import json
 import os
 import subprocess
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
@@ -50,20 +51,40 @@ def session_path() -> Path:
 
 
 def load() -> Json:
+    """The saved session. A missing or unreadable file is no session, and a token
+    that does not decode is left out, so the command refreshes or logs in."""
     try:
-        return cast(Json, json.loads(session_path().read_text()))
-    except FileNotFoundError:
+        # ValueError covers JSONDecodeError and UnicodeDecodeError.
+        session = json.loads(session_path().read_text())
+    except (FileNotFoundError, ValueError):
         return {}
+    if not isinstance(session, dict):
+        return {}
+    if session.get("token"):
+        try:
+            claims(session["token"])
+        # A payload without a dot raises IndexError; bad base64 or JSON raise
+        # ValueError.
+        except (IndexError, ValueError):
+            del session["token"]
+    return session
 
 
 def save(session: Json) -> None:
+    """Writes a private temporary file beside the session file and renames it
+    over the session file, so a parallel reader or an interrupted save never
+    leaves a partial session behind."""
     path = session_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    # O_CREAT applies the mode only to a new file.
-    os.fchmod(descriptor, 0o600)
-    with os.fdopen(descriptor, "w") as file:
-        json.dump(session, file)
+    # mkstemp creates the file readable and writable by its owner only.
+    descriptor, temporary = tempfile.mkstemp(dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "w") as file:
+            json.dump(session, file)
+        os.replace(temporary, path)
+    except BaseException:
+        os.unlink(temporary)
+        raise
 
 
 def headers(session: Json) -> dict[str, str]:
