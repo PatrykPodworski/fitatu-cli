@@ -48,6 +48,8 @@ KEPT = {"id": 501, "name": "Oat crunch", "newProductCreated": False}
 # Fitatu can save any edit under a new ID.
 REPLACED = {"id": 503, "name": "Bean stew", "newProductCreated": True}
 PORTION_MEASURE = {"measureKey": "PORTION", "measureUnit": "g", "weight": 450}
+# The fields a spec cannot set, for a product without them.
+NO_LABEL = {"producer": None, "barcode": None, "sodium": None, "saturatedFat": None}
 SHAPE = "Run 'fitatu product edit --help' for the spec's shape."
 
 
@@ -91,6 +93,7 @@ def test_product_edit_of_the_name_puts_the_current_values_per_100_g(
                     "fiber": 6,
                     "sugars": 20,
                     "salt": 0.3,
+                    **NO_LABEL,
                 },
             ),
             {},
@@ -120,6 +123,7 @@ def test_product_edit_of_a_portion_product_puts_values_per_portion_and_keeps_it(
         "sugars": None,
         "salt": 4.05,
         "measures": [PORTION_MEASURE],
+        **NO_LABEL,
     }
 
 
@@ -158,6 +162,7 @@ def test_product_edit_with_a_portion_adds_one_to_a_gram_product(
         "sugars": 50,
         "salt": 1,
         "measures": [{"measureKey": "PORTION", "measureUnit": "g", "weight": 250}],
+        **NO_LABEL,
     }
 
 
@@ -219,6 +224,7 @@ def test_product_edit_sends_missing_values_as_null_and_no_measures(
         "fiber": None,
         "sugars": None,
         "salt": None,
+        **NO_LABEL,
     }
 
 
@@ -241,6 +247,53 @@ def test_product_edit_of_a_small_portion_keeps_the_nutrients_per_100_g(
     assert body["measures"] == [
         {"measureKey": "PORTION", "measureUnit": "g", "weight": grams}
     ]
+
+
+# Fields a product create spec cannot set, which the product can still have.
+LABEL: Json = {
+    "producer": "Mill Works",
+    "sodium": 120,
+    "saturatedFat": 2.5,
+    "currentUserPrivateBarcode": "0000000000017",
+}
+KEPT_LABEL = {
+    "producer": "Mill Works",
+    "sodium": 120,
+    "saturatedFat": 2.5,
+    "barcode": "0000000000017",
+}
+
+
+def test_product_edit_of_the_name_keeps_the_fields_a_spec_cannot_set(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    client = FakeClient(get=GRAMS | LABEL, put=KEPT)
+
+    run_text(
+        ["product", "edit", "501", write(tmp_path, {"name": "Oat crunch"})],
+        client,
+        capsys,
+    )
+
+    body = put_body(client)
+    assert {key: body.get(key) for key in KEPT_LABEL} == KEPT_LABEL
+
+
+def test_product_edit_of_a_portion_product_scales_sodium_and_saturated_fat(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    client = FakeClient(get=PORTION | LABEL, put=REPLACED)
+
+    run_text(
+        ["product", "edit", "502", write(tmp_path, {"name": "Soup"})], client, capsys
+    )
+
+    body = put_body(client)
+    assert {key: body.get(key) for key in KEPT_LABEL} == KEPT_LABEL | {
+        "sodium": 540,
+        "saturatedFat": 11.25,
+    }
+    assert body["measures"] == [PORTION_MEASURE]
 
 
 def run_failing(
