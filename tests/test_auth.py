@@ -563,6 +563,9 @@ def test_an_interrupted_save_keeps_the_previous_session(
         # A reader running now, such as a parallel fitatu process, sees the
         # file as it is at this moment.
         assert account.read_text() == previous
+        # The new session is written beside the old one, since os.replace
+        # cannot move a file to another filesystem.
+        assert len(list(account.parent.iterdir())) == 2
         raise KeyboardInterrupt
 
     monkeypatch.setattr(json, "dump", interrupted)
