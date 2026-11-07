@@ -27,6 +27,9 @@ Json = dict[str, Any]
 GRAM_MEASURE = 1
 PORTION_MEASURE = 39
 YOURS = "run 'fitatu product list' to see them."
+# Nutrients a spec cannot set. Fitatu clears a key the PUT leaves out, so the body
+# carries the product's values.
+LABEL_NUTRIENTS = ("sodium", "saturatedFat")
 
 
 def edit_spec(path: str) -> Json:
@@ -62,7 +65,9 @@ def edit_body(product: Json, spec: Json) -> Json:
     new_portion = per["grams"] if isinstance(per, dict) else None
     portion = new_portion or current_portion(product)
     body: Json = {key: spec.get(key, product.get(key)) for key in ("name", "brand")}
-    for key in NUTRIENTS:
+    body["producer"] = product.get("producer")
+    body["barcode"] = product.get("currentUserPrivateBarcode")
+    for key in (*NUTRIENTS, *LABEL_NUTRIENTS):
         if key in spec and new_portion:
             body[key] = spec[key]
             continue
