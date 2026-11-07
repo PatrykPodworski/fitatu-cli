@@ -84,6 +84,9 @@ class FitatuClient:
     ) -> None:
         self.http = http
         self.now = now
+        # The account of this client's first request; every later request,
+        # retries included, must go out as the same account.
+        self.uid: str | None = None
 
     def login(self) -> None:
         auth.login(self.http)
@@ -102,7 +105,7 @@ class FitatuClient:
 
     def send(self, method: str, path: str, body: Json | None) -> Json:
         """Sends a `method` request to an API path, with `{uid}` replaced by the
-        user's ID. A 401 gets one fresh login and retry."""
+        user's ID. A 401 gets one fresh login and retry, as the same account."""
         try:
             return self.request(method, path, auth.session(self.http, self.now), body)
         except HTTPError as error:
@@ -120,6 +123,14 @@ class FitatuClient:
         )
 
     def request(self, method: str, path: str, session: Json, body: Json | None) -> Json:
+        if self.uid is None:
+            self.uid = session["uid"]
+        elif session["uid"] != self.uid:
+            raise FitatuCliError(
+                "The Fitatu login changed to another account during this command, "
+                "so it stopped before sending anything as that account.",
+                "Run it again.",
+            )
         url = auth.API_BASE + path.replace("{uid}", session["uid"])
         return self.http(url, auth.headers(session), body, method)
 

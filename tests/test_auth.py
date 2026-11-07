@@ -9,6 +9,7 @@ import pytest
 from conftest import APP_UUID, EMAIL, NOW, FakeHttp, http_error, jwt
 
 from fitatu_cli import auth
+from fitatu_cli.cli import main
 from fitatu_cli.client import FitatuClient
 from fitatu_cli.errors import FitatuCliError
 
@@ -52,6 +53,7 @@ def test_first_get_logs_in_and_saves_session(
         "token": NEW_TOKEN,
         "refresh_token": "fake-refresh",
         "uid": "101",
+        "email": EMAIL,
     }
     assert login_headers["APP-UUID"] == APP_UUID
     assert "API-Cluster" not in login_headers
@@ -383,3 +385,125 @@ def test_existing_session_file_is_made_private(account: Path) -> None:
     client(http).get(DAY)
 
     assert stat.S_IMODE(account.stat().st_mode) == 0o600
+
+
+DAYS = "/api/diet-plan/{uid}/days"
+DAYS_101 = "/api/diet-plan/101/days"
+OTHER_TOKEN = jwt(NOW + 7200, uid=202)
+WRITE = {"2026-07-05": {"dietPlan": {"lunch": {"items": [{"productId": 501}]}}}}
+SWITCHED = (
+    "The Fitatu login changed to another account during this command, so it "
+    "stopped before sending anything as that account. Run it again."
+)
+
+
+def test_401_never_resends_a_write_as_another_account(account: Path) -> None:
+    save(account, token=TOKEN)
+    http = FakeHttp({DAYS_101: [http_error(401)], LOGIN: [{"token": OTHER_TOKEN}]})
+
+    with pytest.raises(FitatuCliError) as error:
+        client(http).post(DAYS, WRITE)
+
+    assert str(error.value) == SWITCHED
+    assert http.paths == [DAYS_101, LOGIN]
+
+
+def test_a_session_changed_between_read_and_write_is_refused(account: Path) -> None:
+    save(account, token=TOKEN)
+    http = FakeHttp({DAY_101: [PLAN]})
+    fitatu = client(http)
+    fitatu.get(DAY)
+    save(account, token=OTHER_TOKEN, uid="202")
+
+    with pytest.raises(FitatuCliError) as error:
+        fitatu.post(DAYS, WRITE)
+
+    assert str(error.value) == SWITCHED
+    assert http.paths == [DAY_101]
+
+
+def any_account(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda argv, **_: subprocess.CompletedProcess(argv, 0, "fake password\n", ""),
+    )
+
+
+def test_a_session_of_another_email_is_replaced_by_a_login(
+    account: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    any_account(monkeypatch)
+    monkeypatch.setenv("FITATU_EMAIL", "first@example.com")
+    client(FakeHttp({LOGIN: [{"token": TOKEN}]})).login()
+    monkeypatch.setenv("FITATU_EMAIL", "second@example.com")
+    day_202 = "/api/diet-and-activity-plan/202/day/2026-07-05"
+    http = FakeHttp({LOGIN: [{"token": OTHER_TOKEN}], day_202: [PLAN]})
+
+    assert client(http).get(DAY) == PLAN
+
+    assert http.paths == [LOGIN, day_202]
+    assert http.calls[0][2] == {
+        "_username": "second@example.com",
+        "_password": "fake password",
+    }
+    assert json.loads(account.read_text())["email"] == "second@example.com"
+
+
+def test_entry_create_after_a_401_as_another_account_writes_nothing(
+    account: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    save(account, token=TOKEN)
+    lunch = {"dietPlan": {"lunch": {"mealName": "Lunch", "items": []}}}
+    http = FakeHttp(
+        {
+            DAY_101: [lunch],
+            DAYS_101: [http_error(401)],
+            LOGIN: [{"token": OTHER_TOKEN}],
+        }
+    )
+    argv = ["entry", "create", "2026-07-05", "Lunch", "--product", "501"]
+    argv += ["--quantity", "1", "--measure", "7"]
+
+    assert main(argv, connect=lambda: client(http)) == 1
+
+    out = capsys.readouterr()
+    assert (out.out, out.err) == ("", f"fitatu: {SWITCHED}\n")
+    assert http.paths == [DAY_101, DAYS_101, LOGIN]
+
+
+@pytest.mark.parametrize(
+    "address", [EMAIL, None, ""], ids=["same-email", "email-unset", "email-empty"]
+)
+def test_a_session_of_the_same_or_no_email_is_reused(
+    account: Path, monkeypatch: pytest.MonkeyPatch, address: str | None
+) -> None:
+    save(account, token=TOKEN, email=EMAIL)
+    if address is None:
+        monkeypatch.delenv("FITATU_EMAIL")
+    else:
+        monkeypatch.setenv("FITATU_EMAIL", address)
+    http = FakeHttp({DAY_101: [PLAN]})
+
+    assert client(http).get(DAY) == PLAN
+
+    assert http.paths == [DAY_101]
+
+
+def test_a_refresh_keeps_the_sessions_email(account: Path) -> None:
+    save(account, token=jwt(NOW), refresh_token="fake-refresh", email=EMAIL)
+    http = FakeHttp({REFRESH: [logged_in()], DAY_101: [PLAN]})
+
+    client(http).get(DAY)
+
+    assert http.paths == [REFRESH, DAY_101]
+    assert json.loads(account.read_text())["email"] == EMAIL
+
+
+def test_a_refresh_of_a_session_without_email_saves_none(account: Path) -> None:
+    save(account, token=jwt(NOW), refresh_token="fake-refresh")
+    http = FakeHttp({REFRESH: [logged_in()], DAY_101: [PLAN]})
+
+    client(http).get(DAY)
+
+    assert "email" not in json.loads(account.read_text())

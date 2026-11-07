@@ -115,12 +115,15 @@ def password(address: str) -> str:
     return keychain.stdout.rstrip("\n")
 
 
-def store(response: Json) -> Json:
-    """Saves the session from a login or refresh response."""
+def store(response: Json, address: str | None) -> Json:
+    """Saves the session from a login or refresh response, with the email it
+    logged in with when that is known."""
     token = response.get("token")
     if not token:
         raise unreadable()
     session = {"token": token, "uid": str(claims(token)["id"])}
+    if address:
+        session["email"] = address
     if response.get("refresh_token"):
         session["refresh_token"] = response["refresh_token"]
     save(session)
@@ -144,12 +147,18 @@ def login(http: Http) -> Json:
                 "Check the Keychain password for service 'fitatu'.",
             ) from None
         raise
-    return store(response)
+    return store(response, address)
 
 
 def session(http: Http, now: Callable[[], float]) -> Json:
-    """A session with a token valid for at least MARGIN seconds."""
+    """A session with a token valid for at least MARGIN seconds. A session saved
+    for another account than FITATU_EMAIL is replaced by a login; one without an
+    email, from an older version or copied, is used as it is."""
     current = load()
+    recorded = current.get("email")
+    address = os.environ.get("FITATU_EMAIL")
+    if recorded and address and recorded != address:
+        return login(http)
     if current.get("token") and claims(current["token"])["exp"] - MARGIN > now():
         return current
     if current.get("refresh_token"):
@@ -163,5 +172,5 @@ def session(http: Http, now: Callable[[], float]) -> Json:
         except HTTPError:
             pass
         else:
-            return store(response)
+            return store(response, recorded)
     return login(http)
