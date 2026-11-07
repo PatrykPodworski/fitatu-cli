@@ -36,6 +36,11 @@ uv tool install git+https://github.com/PatrykPodworski/fitatu-cli
 `FITATU_SESSION` when that variable is set. A token lasts 1 hour. Other commands
 refresh it, or log in again, when they need to.
 
+The session records the email it logged in with. When `FITATU_EMAIL` names another
+account, the next command drops the session and logs in as `FITATU_EMAIL`. A command
+sends every request as the account of its first request: if the login changes to
+another account midway, it stops before it sends anything as that account.
+
 Without a Keychain (on any system other than macOS), run `fitatu auth login` on a Mac, copy
 the session file to the other machine, and set `FITATU_SESSION` to its path if it is
 not at `~/.fitatu/session.json`.
@@ -477,6 +482,7 @@ example `fitatu --debug day view`.
 | 1 | `Logging in to Fitatu reads the password from the macOS Keychain, which is not available here. Log in on a Mac and copy ~/.fitatu/session.json to this machine, or set FITATU_SESSION to a copied session file.` |
 | 1 | `Logging in to Fitatu reads the password from the macOS Keychain, which is not available here. Copy a session file from a Mac that ran 'fitatu auth login' and point FITATU_SESSION at it.` |
 | 1 | `Fitatu rejected the login for <email>. Check the Keychain password for service 'fitatu'.` |
+| 1 | `The Fitatu login changed to another account during this command, so it stopped before sending anything as that account. Run it again.` |
 | 1 | `Fitatu did not accept a fresh login. Run 'fitatu auth login'; if it keeps failing, the API may have changed — report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Fitatu is rate-limiting requests from this machine. Wait a few minutes and try again.` |
 | 1 | `Could not reach Fitatu (<reason>). Check your internet connection and try again.` |

@@ -251,6 +251,9 @@ stderr line, `fitatu: <What happened.> <What to do.>`.
   `fitatu day view` it names and retry with an ID from its `id` column.
 - `Fitatu did not delete the entry (<reason>)` (exit 1): show the full line to the
   user and stop.
+- `The Fitatu login changed to another account during this command` (exit 1): the
+  command wrote nothing to the new account. Run it once more; if it fails the same
+  way, show the full line to the user and stop.
 - Any other exit 1, such as a rate limit or no network: tell the user the second
   sentence and wait for them.
 - Exit 2: bad arguments, or a `recipe create`, `recipe edit`, `product create` or
