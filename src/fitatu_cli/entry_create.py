@@ -158,6 +158,8 @@ def create_entry(args: argparse.Namespace, connect: Connect) -> Json:
         "measureId": measure,
         "measureQuantity": args.quantity,
         **food(args, client),
+        # Fitatu saves an item sent without `eaten` as not eaten.
+        "eaten": True,
         "source": "API",
         "updatedAt": timestamp(datetime.now()),
     }
