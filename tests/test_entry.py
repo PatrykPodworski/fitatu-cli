@@ -90,6 +90,7 @@ def test_entry_create_posts_only_the_new_product_item(
                             "measureQuantity": 2.5,
                             "ingredientsServing": None,
                             "productId": 501,
+                            "eaten": True,
                             "source": "API",
                             "updatedAt": "2026-10-11 08:05:09",
                         }
@@ -103,6 +104,20 @@ def test_entry_create_posts_only_the_new_product_item(
     }
     assert out == f"{entry_id}\n"
     assert_new_entry_id(entry_id)
+
+
+@pytest.mark.parametrize("food", [PRODUCT, ["--recipe", "77", "--quantity", "1"]])
+def test_entry_create_marks_the_entry_eaten(
+    food: list[str], capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Fitatu saves an item sent without `eaten` as not eaten (#69)."""
+    client: Any = DiaryClient({DAY: PLAN, "/api/recipes/77": STEW})
+
+    run_text(["entry", "create", "2026-07-05", "lunch", *food], client, capsys)
+
+    _, body = posted(client)
+    [item] = body["2026-07-05"]["dietPlan"]["lunch"]["items"]
+    assert item.get("eaten") is True
 
 
 def test_entry_create_resends_the_days_note_tags_and_toilet_items(
@@ -170,6 +185,7 @@ def test_entry_create_puts_a_recipe_in_portions_with_its_servings(
                     "measureQuantity": 1,
                     "ingredientsServing": 4,
                     "recipeId": 77,
+                    "eaten": True,
                     "source": "API",
                     "updatedAt": "2026-10-11 08:05:09",
                 }

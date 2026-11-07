@@ -145,8 +145,8 @@ entry ID, the `id` that `day view` shows for it. MEAL is the meal's name as `day
 shows it, or its key (`breakfast`, `second_breakfast`, `lunch`, `dinner`, `supper`),
 in any case. Give `--product` with an ID from `food search`, or `--recipe` with an ID
 from `recipe list`. `--quantity` counts the measure: a product needs `--measure`, the
-measure ID `food search` prints; a recipe defaults to measure 39, a portion. Each run
-adds a new entry, so running it twice logs the food twice.
+measure ID `food search` prints; a recipe defaults to measure 39, a portion. The entry
+is saved as eaten. Each run adds a new entry, so running it twice logs the food twice.
 
 `fitatu entry delete DATE ENTRY_ID` removes one entry from a day and prints
 `deleted entry <id> from <meal>: <name>`. It asks no confirmation. Take ENTRY_ID from

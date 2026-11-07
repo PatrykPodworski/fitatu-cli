@@ -396,8 +396,8 @@ fitatu entry create 2026-10-11 Lunch --recipe 100000002 --quantity 1
 - `--quantity` counts the measure. A product needs `--measure`, a measure ID that
   `fitatu food search` prints. A recipe defaults to measure 39, a portion.
 
-Each run adds a new entry; running it twice logs the food twice. `fitatu day view`
-shows the entry in its `id` column.
+The entry is saved as eaten. Each run adds a new entry; running it twice logs the
+food twice. `fitatu day view` shows the entry in its `id` column.
 
 With `--json`, it prints `{"id", "date", "meal"}`, where `meal` is the meal's name.
 
