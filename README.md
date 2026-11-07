@@ -34,7 +34,9 @@ uv tool install git+https://github.com/PatrykPodworski/fitatu-cli
 
 `fitatu auth login` saves the session to `~/.fitatu/session.json`, or to the file in
 `FITATU_SESSION` when that variable is set. A token lasts 1 hour. Other commands
-refresh it, or log in again, when they need to.
+refresh it, or log in again, when they need to. A session file that cannot be read,
+such as an empty one, counts as no session, and a token that does not decode as no
+token, so the next command logs in again or refreshes the token.
 
 The session records the email it logged in with. When `FITATU_EMAIL` names another
 account, the next command drops the session and logs in as `FITATU_EMAIL`. A command
