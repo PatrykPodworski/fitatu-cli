@@ -12,6 +12,17 @@ from fitatu_cli.errors import ISSUES, FitatuCliError, reason, unreadable
 Json = dict[str, Any]
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Turns a redirect into an HTTPError, since a followed redirect would resend
+    the token to wherever it points."""
+
+    def redirect_request(self, *_: Any) -> None:
+        return None
+
+
+OPENER = urllib.request.build_opener(NoRedirect)
+
+
 def http(url: str, headers: dict[str, str], body: Json | None, method: str) -> Json:
     """Sends a `method` request to `url`, with `body` as JSON when given."""
     data = None
@@ -23,12 +34,18 @@ def http(url: str, headers: dict[str, str], body: Json | None, method: str) -> J
         url, data=data, headers=headers, method=method
     )
     try:
-        with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310
+        with OPENER.open(request, timeout=20) as response:
             if method == "DELETE":
                 # The body of Fitatu's answer to a delete is undocumented.
                 return {}
             return cast(Json, json.load(response))
     except HTTPError as error:
+        if 300 <= error.code < 400:
+            raise FitatuCliError(
+                f"Fitatu answered with a redirect (HTTP {error.code}), which "
+                "fitatu-cli does not follow.",
+                f"The API may have changed; report it at {ISSUES}.",
+            ) from error
         if error.code == 429:
             raise FitatuCliError(
                 "Fitatu is rate-limiting requests from this machine.",

@@ -211,8 +211,9 @@ unsorted; with `product create` and `product edit`, the service's response.
 Results go to stdout: text by default, JSON with `--json` or `--raw`. An error is one
 stderr line, `fitatu: <What happened.> <What to do.>`.
 
-- `Unexpected error` or `Fitatu sent a response fitatu-cli could not read` (exit 1): a
-  bug in the CLI or a change in Fitatu's API. Show the full line to the user and stop.
+- `Unexpected error`, `Fitatu sent a response fitatu-cli could not read` or `Fitatu
+  answered with a redirect` (exit 1): a bug in the CLI or a change in Fitatu's API.
+  Show the full line to the user and stop.
 - `Recipe <id> is deleted` (exit 1): an edit of the ingredients or a delete retired
   that ID. Run
   `fitatu recipe list`, confirm the current recipe with the user, and retry with its ID.

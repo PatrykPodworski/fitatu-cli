@@ -1,8 +1,11 @@
+import contextlib
 import io
 import json
 import subprocess
 import urllib.request
+import urllib.response
 from collections.abc import Callable
+from email.message import Message
 from http.client import IncompleteRead, RemoteDisconnected
 from pathlib import Path
 from typing import Any
@@ -53,7 +56,7 @@ class FakeUrlopen:
 
 def serve(monkeypatch: pytest.MonkeyPatch, routes: dict[str, list[Any]]) -> FakeUrlopen:
     fake = FakeUrlopen(routes)
-    monkeypatch.setattr(urllib.request, "urlopen", fake)
+    monkeypatch.setattr(client.OPENER, "open", fake)
     return fake
 
 
@@ -105,6 +108,107 @@ def test_http_delete_does_not_read_the_body(monkeypatch: pytest.MonkeyPatch) -> 
     [(request, _)] = urlopen.requests
     assert request.get_method() == "DELETE"
     assert request.data is None
+
+
+class RedirectingTransport:
+    """Stands in for urllib's HTTP and HTTPS handlers below the opener: answers the
+    first request with a 302 to `location` and any later one with JSON, and records
+    each request's URL and credential headers."""
+
+    def __init__(self, location: str) -> None:
+        self.location = location
+        self.sent: list[tuple[str, str | None, str | None]] = []
+
+    def open(self, request: urllib.request.Request) -> Any:
+        self.sent.append(
+            (
+                request.full_url,
+                request.get_header("Authorization"),
+                request.get_header("Api-cluster"),
+            )
+        )
+        headers = Message()
+        code, msg, body = 200, "OK", b'{"ok": 1}'
+        if len(self.sent) == 1:
+            code, msg, body = 302, "Found", b""
+            headers["Location"] = self.location
+        response = urllib.response.addinfourl(
+            io.BytesIO(body), headers, request.full_url, code
+        )
+        response.msg = msg  # type: ignore[attr-defined]
+        return response
+
+
+def redirect_to(monkeypatch: pytest.MonkeyPatch, location: str) -> RedirectingTransport:
+    transport = RedirectingTransport(location)
+    monkeypatch.setattr(urllib.request.HTTPSHandler, "https_open", transport.open)
+    monkeypatch.setattr(urllib.request.HTTPHandler, "http_open", transport.open)
+    return transport
+
+
+SIGNED_IN = {"Authorization": "Bearer fake-token", "API-Cluster": "fake-cluster"}
+
+
+def redirected(code: int) -> str:
+    return (
+        f"Fitatu answered with a redirect (HTTP {code}), which fitatu-cli does not "
+        f"follow. The API may have changed; report it at {ISSUES}."
+    )
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        pytest.param("https://other.example.com/b", id="cross-host"),
+        pytest.param("http://api.example.com/b", id="https-to-http"),
+        pytest.param("https://api.example.com/b", id="same-origin"),
+    ],
+)
+def test_http_does_not_follow_a_redirect(
+    monkeypatch: pytest.MonkeyPatch, location: str
+) -> None:
+    transport = redirect_to(monkeypatch, location)
+
+    with contextlib.suppress(FitatuCliError):
+        client.http("https://api.example.com/a", SIGNED_IN, None, "GET")
+
+    assert transport.sent == [
+        ("https://api.example.com/a", "Bearer fake-token", "fake-cluster")
+    ]
+
+
+def test_http_names_a_redirect(monkeypatch: pytest.MonkeyPatch) -> None:
+    redirect_to(monkeypatch, "https://other.example.com/b")
+
+    with pytest.raises(FitatuCliError) as error:
+        client.http("https://api.example.com/a", SIGNED_IN, None, "GET")
+
+    assert str(error.value) == redirected(302)
+    assert isinstance(error.value.__cause__, HTTPError)
+
+
+@pytest.mark.parametrize("code", [300, 304, 399])
+def test_http_names_any_3xx_a_redirect(
+    monkeypatch: pytest.MonkeyPatch, code: int
+) -> None:
+    serve(monkeypatch, {"/a": [http_error(code)]})
+
+    with pytest.raises(FitatuCliError) as error:
+        client.http("https://api.example.com/a", SIGNED_IN, None, "GET")
+
+    assert str(error.value) == redirected(code)
+
+
+@pytest.mark.parametrize("code", [299, 400])
+def test_http_passes_other_errors_on(
+    monkeypatch: pytest.MonkeyPatch, code: int
+) -> None:
+    serve(monkeypatch, {"/a": [http_error(code)]})
+
+    with pytest.raises(HTTPError) as error:
+        client.http("https://api.example.com/a", SIGNED_IN, None, "GET")
+
+    assert error.value.code == code
 
 
 def test_connect_returns_fitatu_client() -> None:
@@ -192,6 +296,24 @@ Setup = Callable[[pytest.MonkeyPatch, Path], None]
         ),
         pytest.param(
             nothing, {LOGIN: [http_error(429)]}, RATE_LIMITED, id="429-on-login"
+        ),
+        pytest.param(
+            nothing,
+            {LOGIN: [http_error(301)]},
+            redirected(301),
+            id="redirect-on-login",
+        ),
+        pytest.param(
+            expired_session,
+            {REFRESH: [http_error(307)]},
+            redirected(307),
+            id="redirect-on-refresh",
+        ),
+        pytest.param(
+            nothing,
+            {LOGIN: [LOGGED_IN], DAY: [http_error(308)]},
+            redirected(308),
+            id="redirect-on-data",
         ),
         pytest.param(
             nothing,

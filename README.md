@@ -479,6 +479,7 @@ example `fitatu --debug day view`.
 | 1 | `Fitatu rejected the login for <email>. Check the Keychain password for service 'fitatu'.` |
 | 1 | `Fitatu did not accept a fresh login. Run 'fitatu auth login'; if it keeps failing, the API may have changed — report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Fitatu is rate-limiting requests from this machine. Wait a few minutes and try again.` |
+| 1 | `Fitatu answered with a redirect (HTTP <code>), which fitatu-cli does not follow. The API may have changed; report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Could not reach Fitatu (<reason>). Check your internet connection and try again.` |
 | 1 | `Fitatu sent a response fitatu-cli could not read. Fitatu may have changed its API; rerun with --debug and report it at https://github.com/PatrykPodworski/fitatu-cli/issues.` |
 | 1 | `Fitatu has no recipe with ID <id>. Run 'fitatu recipe list' to see your recipes' IDs.` |
